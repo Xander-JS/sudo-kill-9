@@ -43,6 +43,7 @@ Assets/
     │   ├── Dialogue/
     │   └── Managers/
     └── Sprites/
+        ├── Characters/
         ├── Dialogue/
         ├── Environment/
         └── UI/
@@ -97,6 +98,7 @@ Código fuente en C# estructurado por responsabilidades, generado o depurado con
 
 ### 9. `Sprites/`
 Archivos de imagen 2D (`.png`) creados en Krita, Pixelorama o generadores 2D:
+*   **`Characters/`**: Sprites y perspectivas 2D de personajes para movimiento, combate y animaciones ortogonales.
 *   **`Dialogue/`**: Retratos y expresiones de personajes para los cuadros de conversación.
 *   **`Environment/`**: Fondos 2D y elementos visuales para las escenas ortográficas narrativas.
 *   **`UI/`**: Iconos alegóricos (marcos de cristal, engranajes modulares), botones, fuentes tipográficas y marcos de pantalla.
