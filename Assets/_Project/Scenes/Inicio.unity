@@ -5601,7 +5601,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3de689ec4eea1b9bf8d6a6afa7550baf, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SudoKill9.UI.Inicio.MainMenuController
-  gameplaySceneName: SampleScene
+  gameplaySceneName: prueba
   optionsPanel: {fileID: 184853777}
   creditsPanel: {fileID: 664407967}
   bgmAudioSource: {fileID: 8808235877366427674}
