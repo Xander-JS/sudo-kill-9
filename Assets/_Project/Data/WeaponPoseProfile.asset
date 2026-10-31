@@ -1,0 +1,50 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 010cd1e6f74fe1543a03d7665d7f96fb, type: 3}
+  m_Name: WeaponPoseProfile
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponPoseProfile
+  entries:
+  - key: 0
+    weaponPosition: {x: -0.1, y: -0.01, z: -0.12}
+    weaponEuler: {x: 95, y: -36, z: 32}
+    handOffset: {x: -0.23, y: -0.6, z: 0.6}
+    locked: 0
+  - key: 1
+    weaponPosition: {x: 0.03, y: 0.01, z: -0.23}
+    weaponEuler: {x: 108, y: -147, z: -31}
+    handOffset: {x: -0.03, y: -0.01, z: 0.6}
+    locked: 0
+  - key: 2
+    weaponPosition: {x: 0.03, y: 0.01, z: -0.23}
+    weaponEuler: {x: 108, y: -147, z: -31}
+    handOffset: {x: -0.03, y: -0.01, z: 0.6}
+    locked: 0
+  - key: 3
+    weaponPosition: {x: 0.03, y: 0.01, z: -0.23}
+    weaponEuler: {x: 108, y: -147, z: -31}
+    handOffset: {x: -0.03, y: -0.01, z: 0.6}
+    locked: 0
+  - key: 4
+    weaponPosition: {x: 0.03, y: 0.01, z: -0.23}
+    weaponEuler: {x: 108, y: -147, z: -31}
+    handOffset: {x: -0.03, y: -0.01, z: 0.6}
+    locked: 0
+  - key: 5
+    weaponPosition: {x: 0.09, y: 0.01, z: -0.06}
+    weaponEuler: {x: 83, y: 108, z: -83}
+    handOffset: {x: 0, y: 0, z: 0.25}
+    locked: 0
+  - key: 6
+    weaponPosition: {x: 0.06, y: 0.1, z: -0.06}
+    weaponEuler: {x: 40, y: 57, z: -155}
+    handOffset: {x: -0.01, y: -0.18, z: 0.31}
+    locked: 0
