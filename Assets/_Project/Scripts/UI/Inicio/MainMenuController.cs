@@ -13,7 +13,7 @@ namespace SudoKill9.UI.Inicio
     {
         [Header("Escenas")]
         [Tooltip("Nombre de la escena principal de juego a cargar.")]
-        [SerializeField] private string gameplaySceneName = "SampleScene";
+        [SerializeField] private string gameplaySceneName = "prueba";
 
         [Header("Paneles Modales")]
         [Tooltip("Panel emergente de Opciones / Configuración.")]
