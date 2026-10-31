@@ -1,0 +1,11 @@
+{
+    "mcpServers": {
+        "unity-local-bridge": {
+            "command": "node",
+            "args": [
+                "-e",
+                "const http = require('http'); const data = JSON.stringify({action: 'ping'}); const req = http.request({hostname: 'localhost', port: 8080, path: '/', method: 'POST', headers: {'Content-Type': 'application/json'}}, res => { res.on('data', d => process.stdout.write(d)); }); req.write(data); req.end();"
+            ]
+        }
+    }
+}
