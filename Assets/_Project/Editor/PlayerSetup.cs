@@ -55,14 +55,23 @@ public static class PlayerSetup
             cap.transform.localPosition = new Vector3(0f, 1f, 0f);
         }
 
+        Animator modelAnimator = player.GetComponentInChildren<Animator>();
+        if (modelAnimator != null)
+        {
+            modelAnimator.runtimeAnimatorController = GetLocomotionController();
+            modelAnimator.applyRootMotion = false;
+        }
+
         Camera cam = Camera.main;
         if (cam != null)
         {
-            TopDownCameraFollow follow = cam.GetComponent<TopDownCameraFollow>();
-            if (follow == null) follow = cam.gameObject.AddComponent<TopDownCameraFollow>();
-            follow.target = player.transform;
-            cam.transform.position = player.transform.position + follow.offset;
-            cam.transform.rotation = Quaternion.LookRotation(player.transform.position - cam.transform.position, Vector3.up);
+            CameraController camCtrl = cam.GetComponent<CameraController>();
+            if (camCtrl == null) camCtrl = cam.gameObject.AddComponent<CameraController>();
+            SerializedObject so = new SerializedObject(camCtrl);
+            so.FindProperty("target").objectReferenceValue = player.transform;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            cam.transform.position = player.transform.position + new Vector3(0f, 15f, -15f);
+            cam.transform.rotation = Quaternion.Euler(45f, 0f, 0f);
         }
         else
         {
@@ -73,6 +82,11 @@ public static class PlayerSetup
         Selection.activeGameObject = player;
         EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
         Debug.Log("[PlayerSetup] Player ready. Press Play.");
+    }
+
+    private static RuntimeAnimatorController GetLocomotionController()
+    {
+        return SetupPlayerAnimator.ConfigureController();
     }
 
     // Spiral outward from the origin until a 2m-tall capsule fits without touching anything.
