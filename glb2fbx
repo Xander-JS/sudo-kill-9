@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Wrapper para convertir GLB a FBX con extracción automática de texturas para Unity
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PYTHON_SCRIPT="$SCRIPT_DIR/scripts/glb2fbx.py"
+
+if [ $# -lt 1 ]; then
+    echo "Uso:"
+    echo "  ./glb2fbx <archivo.glb> [carpeta_destino_o_archivo.fbx]"
+    echo ""
+    echo "Ejemplo:"
+    echo "  ./glb2fbx /home/kevin/Descargas/modelo.glb Assets/_Project/Models/Environment/"
+    exit 1
+fi
+
+blender -b -P "$PYTHON_SCRIPT" -- "$@"
