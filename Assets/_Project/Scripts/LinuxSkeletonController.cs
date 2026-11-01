@@ -60,6 +60,7 @@ public class LinuxSkeletonController : MonoBehaviour
 
     private Rigidbody rb;
     private CapsuleCollider capsule;
+    private PlayerAim aim;
 
     private Vector2 moveInput;
     private bool jumpHeld;
@@ -125,6 +126,9 @@ public class LinuxSkeletonController : MonoBehaviour
 #endif
         if (Keyboard.current == null)
             Debug.LogWarning("[LinuxSkeletonController] No Keyboard detected by the Input System.");
+
+        aim = GetComponent<PlayerAim>();
+        if (aim == null) aim = FindFirstObjectByType<PlayerAim>();
     }
 
     private void OnGUI()
@@ -215,7 +219,9 @@ public class LinuxSkeletonController : MonoBehaviour
         float speed = walkSpeed;
         if (isCrouching) speed *= crouchMultiplier;
         else if (isRunning) speed *= sprintMultiplier;
-        Vector3 inputDirection = new Vector3(moveInput.x, 0f, moveInput.y);
+        // Movimiento relativo a la mira: W/S = adelante/atrás respecto a la cámara, A/D = lateral.
+        float aimYaw = aim != null ? aim.Yaw : 0f;
+        Vector3 inputDirection = Quaternion.Euler(0f, aimYaw, 0f) * new Vector3(moveInput.x, 0f, moveInput.y);
         Vector3 targetVel = inputDirection * speed;
 
         Vector3 vel = rb.linearVelocity;
@@ -232,12 +238,7 @@ public class LinuxSkeletonController : MonoBehaviour
 
         rb.linearVelocity = new Vector3(horizontal.x, vel.y, horizontal.z);
 
-        // Gradual Y-only rotation toward the input direction (never snaps).
-        if (hasInput)
-        {
-            Quaternion targetRot = Quaternion.LookRotation(inputDirection.normalized, Vector3.up);
-            rb.MoveRotation(Quaternion.Slerp(rb.rotation, targetRot, turnSpeed * Time.deltaTime));
-        }
+        // La rotación del cuerpo la controla PlayerAim; aquí no giramos.
     }
 
     // ---------------------------------------------------------------- //
