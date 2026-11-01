@@ -61,6 +61,7 @@ public class LinuxSkeletonController : MonoBehaviour
     private Rigidbody rb;
     private CapsuleCollider capsule;
     private PlayerAim aim;
+    private ThirdPersonCameraController thirdPersonCam;
 
     private Vector2 moveInput;
     private bool jumpHeld;
@@ -129,6 +130,7 @@ public class LinuxSkeletonController : MonoBehaviour
 
         aim = GetComponent<PlayerAim>();
         if (aim == null) aim = FindFirstObjectByType<PlayerAim>();
+        thirdPersonCam = FindFirstObjectByType<ThirdPersonCameraController>();
     }
 
     private void OnGUI()
@@ -219,8 +221,11 @@ public class LinuxSkeletonController : MonoBehaviour
         float speed = walkSpeed;
         if (isCrouching) speed *= crouchMultiplier;
         else if (isRunning) speed *= sprintMultiplier;
-        // Movimiento relativo a la mira: W/S = adelante/atrás respecto a la cámara, A/D = lateral.
-        float aimYaw = aim != null ? aim.Yaw : 0f;
+        // Movimiento relativo a la cámara: W/S = adelante/atrás de la cámara, A/D = lateral.
+        // Prioridad: PlayerAim (legado) → ThirdPersonCameraController → mundo.
+        float aimYaw = aim != null ? aim.Yaw
+                     : thirdPersonCam != null ? thirdPersonCam.Yaw
+                     : 0f;
         Vector3 inputDirection = Quaternion.Euler(0f, aimYaw, 0f) * new Vector3(moveInput.x, 0f, moveInput.y);
         Vector3 targetVel = inputDirection * speed;
 
