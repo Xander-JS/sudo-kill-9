@@ -8,11 +8,11 @@ ModelImporter:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
       name: colorReal.001
-    second: {fileID: 2100000, guid: 8d722a922518d20ad916def9be505eb9, type: 2}
+    second: {fileID: 2100000, guid: b569592cb2d4c2e45b1e7ab0ba4e2786, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
-    materialSearch: 1
+    materialSearch: 0
     materialLocation: 1
     searchTexturesGlobally: 0
   animations:
