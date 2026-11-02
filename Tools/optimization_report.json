@@ -1,0 +1,316 @@
+{
+  "results": [
+    {
+      "model": "cpu",
+      "status": "OK",
+      "source_fbx": "Assets\\_Project\\Models\\Environment\\cpu\\cpu.fbx",
+      "output_fbx": "Assets\\_Project\\Models\\Environment\\cpu\\cpu_opt.fbx",
+      "decimate_ratio": 0.5,
+      "original_tris": 1876243,
+      "optimized_tris": 938121,
+      "reduction_pct": 50.0,
+      "elapsed_s": 23.45,
+      "objects": [
+        {
+          "name": "tripo_node_023e66b6-5abc-4770-a5cb-19d5dc63c858",
+          "original_tris": 1876243,
+          "optimized_tris": 938121
+        }
+      ]
+    },
+    {
+      "model": "gpu",
+      "status": "OK",
+      "source_fbx": "Assets\\_Project\\Models\\Environment\\gpu\\gpu.fbx",
+      "output_fbx": "Assets\\_Project\\Models\\Environment\\gpu\\gpu_opt.fbx",
+      "decimate_ratio": 0.5,
+      "original_tris": 1926753,
+      "optimized_tris": 963376,
+      "reduction_pct": 50.0,
+      "elapsed_s": 23.27,
+      "objects": [
+        {
+          "name": "tripo_node_9a67cb33-2fda-473f-aa10-3de853c4d181",
+          "original_tris": 1926753,
+          "optimized_tris": 963376
+        }
+      ]
+    },
+    {
+      "model": "chip",
+      "status": "OK",
+      "source_fbx": "Assets\\_Project\\Models\\Environment\\chip\\chip.fbx",
+      "output_fbx": "Assets\\_Project\\Models\\Environment\\chip\\chip_opt.fbx",
+      "decimate_ratio": 0.5,
+      "original_tris": 1983800,
+      "optimized_tris": 991900,
+      "reduction_pct": 50.0,
+      "elapsed_s": 23.53,
+      "objects": [
+        {
+          "name": "tripo_node_4d04f195-47d6-4466-9135-8cbc274ae162",
+          "original_tris": 1983800,
+          "optimized_tris": 991900
+        }
+      ]
+    },
+    {
+      "model": "ram",
+      "status": "OK",
+      "source_fbx": "Assets\\_Project\\Models\\Environment\\ram\\ram.fbx",
+      "output_fbx": "Assets\\_Project\\Models\\Environment\\ram\\ram_opt.fbx",
+      "decimate_ratio": 0.4,
+      "original_tris": 1912648,
+      "optimized_tris": 765059,
+      "reduction_pct": 60.0,
+      "elapsed_s": 23.93,
+      "objects": [
+        {
+          "name": "tripo_node_329f4863-6258-4e1b-9091-27a046abae21",
+          "original_tris": 1912648,
+          "optimized_tris": 765059
+        }
+      ]
+    },
+    {
+      "model": "resistencia",
+      "status": "OK",
+      "source_fbx": "Assets\\_Project\\Models\\Environment\\resistencia\\resistencia.fbx",
+      "output_fbx": "Assets\\_Project\\Models\\Environment\\resistencia\\resistencia_opt.fbx",
+      "decimate_ratio": 0.3,
+      "original_tris": 1944344,
+      "optimized_tris": 583303,
+      "reduction_pct": 70.0,
+      "elapsed_s": 25.54,
+      "objects": [
+        {
+          "name": "tripo_node_b068d886-1a42-4bad-a844-e55a85511df3",
+          "original_tris": 1944344,
+          "optimized_tris": 583303
+        }
+      ]
+    },
+    {
+      "model": "condensador",
+      "status": "OK",
+      "source_fbx": "Assets\\_Project\\Models\\Environment\\condensador\\condensador.fbx",
+      "output_fbx": "Assets\\_Project\\Models\\Environment\\condensador\\condensador_opt.fbx",
+      "decimate_ratio": 0.3,
+      "original_tris": 1910399,
+      "optimized_tris": 573119,
+      "reduction_pct": 70.0,
+      "elapsed_s": 26.56,
+      "objects": [
+        {
+          "name": "tripo_node_67bba0f4-f921-4f18-92bc-972479e78cc3",
+          "original_tris": 1910399,
+          "optimized_tris": 573119
+        }
+      ]
+    },
+    {
+      "model": "disco_almacenamiento",
+      "status": "OK",
+      "source_fbx": "Assets\\_Project\\Models\\Environment\\disco_almacenamiento\\disco_almacenamiento.fbx",
+      "output_fbx": "Assets\\_Project\\Models\\Environment\\disco_almacenamiento\\disco_almacenamiento_opt.fbx",
+      "decimate_ratio": 0.4,
+      "original_tris": 1925374,
+      "optimized_tris": 770149,
+      "reduction_pct": 60.0,
+      "elapsed_s": 25.26,
+      "objects": [
+        {
+          "name": "tripo_node_2fb9d8ad-6118-418c-aa66-a4b4025dee82",
+          "original_tris": 1925374,
+          "optimized_tris": 770149
+        }
+      ]
+    },
+    {
+      "model": "targeta_red",
+      "status": "OK",
+      "source_fbx": "Assets\\_Project\\Models\\Environment\\targeta_red\\targeta_red.fbx",
+      "output_fbx": "Assets\\_Project\\Models\\Environment\\targeta_red\\targeta_red_opt.fbx",
+      "decimate_ratio": 0.4,
+      "original_tris": 1959447,
+      "optimized_tris": 783778,
+      "reduction_pct": 60.0,
+      "elapsed_s": 24.63,
+      "objects": [
+        {
+          "name": "tripo_node_c878b8da-19c5-4d48-a2d4-b4287271c4f4",
+          "original_tris": 1959447,
+          "optimized_tris": 783778
+        }
+      ]
+    },
+    {
+      "model": "puertos_conexion",
+      "status": "OK",
+      "source_fbx": "Assets\\_Project\\Models\\Environment\\puertos_conexion\\puertos_conexion.fbx",
+      "output_fbx": "Assets\\_Project\\Models\\Environment\\puertos_conexion\\puertos_conexion_opt.fbx",
+      "decimate_ratio": 0.4,
+      "original_tris": 1959824,
+      "optimized_tris": 783929,
+      "reduction_pct": 60.0,
+      "elapsed_s": 24.61,
+      "objects": [
+        {
+          "name": "tripo_node_f64b9735-0b61-4089-a98d-1e0c19b31a04",
+          "original_tris": 1959824,
+          "optimized_tris": 783929
+        }
+      ]
+    },
+    {
+      "model": "batería_CMOS",
+      "status": "OK",
+      "source_fbx": "Assets\\_Project\\Models\\Environment\\batería_CMOS\\batería_CMOS.fbx",
+      "output_fbx": "Assets\\_Project\\Models\\Environment\\batería_CMOS\\batería_CMOS_opt.fbx",
+      "decimate_ratio": 0.3,
+      "original_tris": 1857269,
+      "optimized_tris": 557179,
+      "reduction_pct": 70.0,
+      "elapsed_s": 24.74,
+      "objects": [
+        {
+          "name": "tripo_node_edf7029b-489a-4416-b52d-bc4c8ddf88fd",
+          "original_tris": 1857269,
+          "optimized_tris": 557179
+        }
+      ]
+    },
+    {
+      "model": "ventilador_refrigeracion",
+      "status": "OK",
+      "source_fbx": "Assets\\_Project\\Models\\Environment\\ventilador_refrigeracion\\ventilador_refrigeracion.fbx",
+      "output_fbx": "Assets\\_Project\\Models\\Environment\\ventilador_refrigeracion\\ventilador_refrigeracion_opt.fbx",
+      "decimate_ratio": 0.3,
+      "original_tris": 1878603,
+      "optimized_tris": 563579,
+      "reduction_pct": 70.0,
+      "elapsed_s": 24.47,
+      "objects": [
+        {
+          "name": "tripo_node_69f79b3d-de19-41a6-92c9-2556bea85c90",
+          "original_tris": 1878603,
+          "optimized_tris": 563579
+        }
+      ]
+    },
+    {
+      "model": "SCAR-H",
+      "status": "OK",
+      "source_fbx": "Assets\\_Project\\Models\\Environment\\SCAR-H.fbx",
+      "output_fbx": "Assets\\_Project\\Models\\Environment\\SCAR-H_opt.fbx",
+      "decimate_ratio": 0.4,
+      "original_tris": 11482,
+      "optimized_tris": 4590,
+      "reduction_pct": 60.0,
+      "elapsed_s": 0.08,
+      "objects": [
+        {
+          "name": "ScarMag",
+          "original_tris": 628,
+          "optimized_tris": 250
+        },
+        {
+          "name": "ScarBody",
+          "original_tris": 10854,
+          "optimized_tris": 4340
+        }
+      ]
+    },
+    {
+      "model": "PC",
+      "status": "OK",
+      "source_fbx": "Assets\\_Project\\Models\\Environment\\Inicio_modelos\\PC.fbx",
+      "output_fbx": "Assets\\_Project\\Models\\Environment\\Inicio_modelos\\PC_opt.fbx",
+      "decimate_ratio": 0.35,
+      "original_tris": 960092,
+      "optimized_tris": 336032,
+      "reduction_pct": 65.0,
+      "elapsed_s": 11.72,
+      "objects": [
+        {
+          "name": "tripo_node_f7774676-321d-4b59-9dd4-210118f72dd8",
+          "original_tris": 960092,
+          "optimized_tris": 336032
+        }
+      ]
+    },
+    {
+      "model": "Casillero",
+      "status": "OK",
+      "source_fbx": "Assets\\_Project\\Models\\Environment\\Inicio_modelos\\Casillero.fbx",
+      "output_fbx": "Assets\\_Project\\Models\\Environment\\Inicio_modelos\\Casillero_opt.fbx",
+      "decimate_ratio": 0.35,
+      "original_tris": 948878,
+      "optimized_tris": 332106,
+      "reduction_pct": 65.0,
+      "elapsed_s": 11.67,
+      "objects": [
+        {
+          "name": "tripo_node_43e8b7e2-5c23-44ea-8539-ec1d82ff6e45",
+          "original_tris": 948878,
+          "optimized_tris": 332106
+        }
+      ]
+    },
+    {
+      "model": "Mapa",
+      "status": "OK",
+      "source_fbx": "Assets\\_Project\\Models\\Environment\\Inicio_modelos\\Mapa.fbx",
+      "output_fbx": "Assets\\_Project\\Models\\Environment\\Inicio_modelos\\Mapa_opt.fbx",
+      "decimate_ratio": 0.3,
+      "original_tris": 978241,
+      "optimized_tris": 293472,
+      "reduction_pct": 70.0,
+      "elapsed_s": 12.62,
+      "objects": [
+        {
+          "name": "tripo_node_1fdfef7b-3180-42ed-aee7-4f4b0e6fd271",
+          "original_tris": 978241,
+          "optimized_tris": 293472
+        }
+      ]
+    },
+    {
+      "model": "Mesa",
+      "status": "OK",
+      "source_fbx": "Assets\\_Project\\Models\\Environment\\Inicio_modelos\\Mesa.fbx",
+      "output_fbx": "Assets\\_Project\\Models\\Environment\\Inicio_modelos\\Mesa_opt.fbx",
+      "decimate_ratio": 0.4,
+      "original_tris": 1916608,
+      "optimized_tris": 766642,
+      "reduction_pct": 60.0,
+      "elapsed_s": 23.98,
+      "objects": [
+        {
+          "name": "tripo_node_219712cd-544a-4019-b56a-ed8a28409e19",
+          "original_tris": 1916608,
+          "optimized_tris": 766642
+        }
+      ]
+    },
+    {
+      "model": "Armas",
+      "status": "OK",
+      "source_fbx": "Assets\\_Project\\Models\\Environment\\Inicio_modelos\\Armas.fbx",
+      "output_fbx": "Assets\\_Project\\Models\\Environment\\Inicio_modelos\\Armas_opt.fbx",
+      "decimate_ratio": 0.4,
+      "original_tris": 1936105,
+      "optimized_tris": 774441,
+      "reduction_pct": 60.0,
+      "elapsed_s": 24.24,
+      "objects": [
+        {
+          "name": "tripo_node_7979483c-aa5d-4184-b806-2b83ac2f29cb",
+          "original_tris": 1936105,
+          "optimized_tris": 774441
+        }
+      ]
+    }
+  ],
+  "generated": "2026-11-02 15:45"
+}
