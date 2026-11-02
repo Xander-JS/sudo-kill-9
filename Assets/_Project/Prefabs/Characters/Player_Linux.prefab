@@ -1409,7 +1409,7 @@ MonoBehaviour:
     m_Bits: 4294967295
   groundCheckDistance: 0.1
   maxSlopeAngle: 50
-  showDebug: 1
+  showDebug: 0
   standHeight: 2
   crouchHeight: 1
 --- !u!1 &7415973972655140230
