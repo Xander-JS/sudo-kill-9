@@ -2,8 +2,8 @@ using UnityEngine;
 
 /// <summary>
 /// Cámara con proyección oblicua que sigue al personaje Linux y orbita
-/// sincronizada con la mira (PlayerAim.Yaw).
-/// Adjunta a "Camera 3".
+/// sincronizada con la mira (PlayerCursorAim.Yaw).
+/// Adjunta a "Camera_3" en la escena TerrenoJuego.
 ///
 /// Cuando el jugador apunta hacia atrás la cámara gira automáticamente
 /// para mostrar lo que hay en esa dirección.
@@ -15,7 +15,7 @@ public class IsometricCameraController : MonoBehaviour
     [SerializeField] private Transform target;
 
     [Header("Sincronización con la mira")]
-    [Tooltip("Sincroniza el Yaw de la cámara con PlayerAim. Si está desactivado usa el Yaw fijo de abajo.")]
+    [Tooltip("Sincroniza el Yaw de la cámara con PlayerCursorAim. Si está desactivado usa el Yaw fijo de abajo.")]
     [SerializeField] private bool syncWithAim = true;
     [Tooltip("Suavizado del Yaw al seguir la mira (segundos). 0 = instantáneo.")]
     [SerializeField] private float yawSmoothTime = 0.15f;
@@ -51,11 +51,19 @@ public class IsometricCameraController : MonoBehaviour
     [Header("Suavizado de posición")]
     [SerializeField] private float smoothTime = 0.12f;
 
+    [Header("Umbral de movimiento del cursor")]
+    [Tooltip("Diferencia mínima de Yaw (grados) para que se considere que el cursor se movió. " +
+             "Si el cursor no se mueve la cámara se congela en la última posición.")]
+    [SerializeField] private float aimMovementThreshold = 0.5f;
+
     private Camera cam;
     private Vector3 posVelocity;
     private float currentYaw;
     private float yawVelocity;
-    private PlayerAim aim;
+    private float lockedTargetYaw;   // último Yaw confirmado; la cámara se detiene aquí cuando el cursor para
+
+    // La escena usa PlayerCursorAim, no PlayerAim.
+    private PlayerCursorAim cursorAim;
 
     private void Awake()
     {
@@ -73,12 +81,13 @@ public class IsometricCameraController : MonoBehaviour
                 Debug.LogWarning("[IsometricCamera] No se encontró LinuxSkeletonController. Asigna 'target' manualmente.");
         }
 
-        aim = FindFirstObjectByType<PlayerAim>();
-        if (syncWithAim && aim == null)
-            Debug.LogWarning("[IsometricCamera] syncWithAim = true pero no se encontró PlayerAim en la escena.");
+        cursorAim = FindFirstObjectByType<PlayerCursorAim>();
+        if (syncWithAim && cursorAim == null)
+            Debug.LogWarning("[IsometricCamera] syncWithAim = true pero no se encontró PlayerCursorAim en la escena.");
 
-        // Semilla del yaw para evitar snap en el primer frame.
-        currentYaw = syncWithAim && aim != null ? aim.Yaw + yawOffset : yaw;
+        float seedYaw = syncWithAim && cursorAim != null ? cursorAim.Yaw + yawOffset : yaw;
+        currentYaw    = seedYaw;
+        lockedTargetYaw = seedYaw;
 
         ApplyProjection();
 
@@ -88,13 +97,35 @@ public class IsometricCameraController : MonoBehaviour
         ApplyRotation();
     }
 
+    /// <summary>Yaw animado de la cámara (sigue al cursor). Usado por IsometricCameraController internamente.</summary>
+    public float Yaw => currentYaw;
+
+    /// <summary>
+    /// Yaw FIJO de referencia para el movimiento WASD.
+    /// Cuando syncWithAim=true la cámara orbita con el cursor, pero el movimiento
+    /// debe usar el ángulo base del inspector (campo 'yaw') para que WASD no rote
+    /// con la mira.
+    /// </summary>
+    public float FixedYaw => yaw;
+
     private void LateUpdate()
     {
         if (target == null) return;
 
-        // Actualizar yaw: seguir la mira o usar el valor fijo.
-        float targetYaw = syncWithAim && aim != null ? aim.Yaw + yawOffset : yaw;
-        currentYaw = Mathf.SmoothDampAngle(currentYaw, targetYaw, ref yawVelocity, yawSmoothTime);
+        // Actualizar lockedTargetYaw solo si el cursor se movió lo suficiente.
+        if (syncWithAim && cursorAim != null)
+        {
+            float liveYaw = cursorAim.Yaw + yawOffset;
+            if (Mathf.Abs(Mathf.DeltaAngle(lockedTargetYaw, liveYaw)) >= aimMovementThreshold)
+                lockedTargetYaw = liveYaw;
+        }
+        else
+        {
+            lockedTargetYaw = yaw;
+        }
+
+        // La cámara se mueve suavemente hacia lockedTargetYaw y se congela al llegar.
+        currentYaw = Mathf.SmoothDampAngle(currentYaw, lockedTargetYaw, ref yawVelocity, yawSmoothTime);
 
         transform.position = Vector3.SmoothDamp(
             transform.position, DesiredPosition(), ref posVelocity, smoothTime);
@@ -124,7 +155,6 @@ public class IsometricCameraController : MonoBehaviour
         cam.ResetProjectionMatrix();
     }
 
-    // Se llama cada frame porque Unity puede resetear la matriz en ciertos eventos.
     private void ApplyObliqueMatrix()
     {
         if (cam == null || !obliqueProjection) return;
