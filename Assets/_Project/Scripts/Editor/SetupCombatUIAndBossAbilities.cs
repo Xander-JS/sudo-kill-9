@@ -36,19 +36,26 @@ namespace SudoKill9.EditorTools
                 const string folder = "Assets/_Project/Scenes/Experimento_K";
                 AssetDatabase.ImportAsset(folder, ImportAssetOptions.ImportRecursive | ImportAssetOptions.ForceUpdate);
                 AssetDatabase.ImportAsset(ScenePath, ImportAssetOptions.ForceUpdate);
-                AsegurarEscenaAbierta();
-                EjecutarConfiguracionSilenciosa();
-                EjecutarPruebasVerificacion();
+                
+                var activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+                if (activeScene.path == ScenePath)
+                {
+                    EjecutarConfiguracionSilenciosa();
+                    EjecutarPruebasVerificacion();
+                }
             };
         }
 
         public static void EjecutarConfiguracionSilenciosa()
         {
+            var activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            if (activeScene.path != ScenePath) return;
+
             AnimatorController ctrl = AsegurarEstadosEspecialesEnController();
             ConfigurarJugadorLinux();
             ConfigurarJefeWindows(ctrl);
             ConfigurarCanvasCombate();
-            EditorSceneManager.MarkSceneDirty(UnityEngine.SceneManagement.SceneManager.GetActiveScene());
+            EditorSceneManager.MarkSceneDirty(activeScene);
             EditorSceneManager.SaveOpenScenes();
         }
 
@@ -370,7 +377,7 @@ namespace SudoKill9.EditorTools
         {
             GameObject bossGO = ObtenerOCrearHijo(parent, "BossHealthBar");
 
-            RectTransform rt = bossGO.GetComponent<RectTransform>();
+            RectTransform rt = ObtenerOAgregarComponente<RectTransform>(bossGO);
             rt.anchorMin = new Vector2(0.5f, 1f);
             rt.anchorMax = new Vector2(0.5f, 1f);
             rt.pivot = new Vector2(0.5f, 1f);
@@ -378,7 +385,7 @@ namespace SudoKill9.EditorTools
             rt.sizeDelta = new Vector2(620f, 75f);
 
             // Marco de fondo
-            Image panelImg = bossGO.GetComponent<Image>() ?? bossGO.AddComponent<Image>();
+            Image panelImg = ObtenerOAgregarComponente<Image>(bossGO);
             if (panelSprite != null)
             {
                 panelImg.sprite = panelSprite;
@@ -399,23 +406,23 @@ namespace SudoKill9.EditorTools
 
             // Contenedor de barras
             GameObject barArea = ObtenerOCrearHijo(bossGO.transform, "BarArea");
-            RectTransform rtBarArea = barArea.GetComponent<RectTransform>() ?? barArea.AddComponent<RectTransform>();
+            RectTransform rtBarArea = ObtenerOAgregarComponente<RectTransform>(barArea);
             rtBarArea.anchorMin = new Vector2(0f, 0f);
             rtBarArea.anchorMax = new Vector2(1f, 1f);
             rtBarArea.offsetMin = new Vector2(18f, 22f);
             rtBarArea.offsetMax = new Vector2(-18f, -30f);
 
             // Fondo negro de la barra
-            Image barBg = barArea.GetComponent<Image>() ?? barArea.AddComponent<Image>();
+            Image barBg = ObtenerOAgregarComponente<Image>(barArea);
             barBg.color = new Color(0.04f, 0.04f, 0.06f, 0.95f);
 
             // Barra Decay (Amarillo/Naranja lento)
             GameObject decayGO = ObtenerOCrearHijo(barArea.transform, "DecayBar");
-            RectTransform rtDecay = decayGO.GetComponent<RectTransform>() ?? decayGO.AddComponent<RectTransform>();
+            RectTransform rtDecay = ObtenerOAgregarComponente<RectTransform>(decayGO);
             rtDecay.anchorMin = Vector2.zero;
             rtDecay.anchorMax = Vector2.one;
             rtDecay.sizeDelta = Vector2.zero;
-            Image decayImg = decayGO.GetComponent<Image>() ?? decayGO.AddComponent<Image>();
+            Image decayImg = ObtenerOAgregarComponente<Image>(decayGO);
             decayImg.type = Image.Type.Filled;
             decayImg.fillMethod = Image.FillMethod.Horizontal;
             decayImg.fillOrigin = (int)Image.OriginHorizontal.Left;
@@ -424,11 +431,11 @@ namespace SudoKill9.EditorTools
 
             // Barra Frontal (Ámbar dorado)
             GameObject fillGO = ObtenerOCrearHijo(barArea.transform, "FillBar");
-            RectTransform rtFill = fillGO.GetComponent<RectTransform>() ?? fillGO.AddComponent<RectTransform>();
+            RectTransform rtFill = ObtenerOAgregarComponente<RectTransform>(fillGO);
             rtFill.anchorMin = Vector2.zero;
             rtFill.anchorMax = Vector2.one;
             rtFill.sizeDelta = Vector2.zero;
-            Image fillImg = fillGO.GetComponent<Image>() ?? fillGO.AddComponent<Image>();
+            Image fillImg = ObtenerOAgregarComponente<Image>(fillGO);
             fillImg.type = Image.Type.Filled;
             fillImg.fillMethod = Image.FillMethod.Horizontal;
             fillImg.fillOrigin = (int)Image.OriginHorizontal.Left;
@@ -472,14 +479,14 @@ namespace SudoKill9.EditorTools
         {
             GameObject tuxGO = ObtenerOCrearHijo(parent, "TuxHealthPlate");
 
-            RectTransform rt = tuxGO.GetComponent<RectTransform>();
+            RectTransform rt = ObtenerOAgregarComponente<RectTransform>(tuxGO);
             rt.anchorMin = new Vector2(0f, 1f);
             rt.anchorMax = new Vector2(0f, 1f);
             rt.pivot = new Vector2(0f, 1f);
             rt.anchoredPosition = new Vector2(30f, -25f);
             rt.sizeDelta = new Vector2(320f, 65f);
 
-            Image panelImg = tuxGO.GetComponent<Image>() ?? tuxGO.AddComponent<Image>();
+            Image panelImg = ObtenerOAgregarComponente<Image>(tuxGO);
             if (panelSprite != null)
             {
                 panelImg.sprite = panelSprite;
@@ -500,22 +507,22 @@ namespace SudoKill9.EditorTools
 
             // Contenedor de barra
             GameObject barArea = ObtenerOCrearHijo(tuxGO.transform, "BarArea");
-            RectTransform rtBarArea = barArea.GetComponent<RectTransform>();
+            RectTransform rtBarArea = ObtenerOAgregarComponente<RectTransform>(barArea);
             rtBarArea.anchorMin = new Vector2(0f, 0f);
             rtBarArea.anchorMax = new Vector2(1f, 1f);
             rtBarArea.offsetMin = new Vector2(16f, 12f);
             rtBarArea.offsetMax = new Vector2(-16f, -28f);
 
-            Image barBg = barArea.GetComponent<Image>() ?? barArea.AddComponent<Image>();
+            Image barBg = ObtenerOAgregarComponente<Image>(barArea);
             barBg.color = new Color(0.05f, 0.08f, 0.06f, 0.95f);
 
             // Barra Frontal
             GameObject fillGO = ObtenerOCrearHijo(barArea.transform, "FillBar");
-            RectTransform rtFill = fillGO.GetComponent<RectTransform>();
+            RectTransform rtFill = ObtenerOAgregarComponente<RectTransform>(fillGO);
             rtFill.anchorMin = Vector2.zero;
             rtFill.anchorMax = Vector2.one;
             rtFill.sizeDelta = Vector2.zero;
-            Image fillImg = fillGO.GetComponent<Image>() ?? fillGO.AddComponent<Image>();
+            Image fillImg = ObtenerOAgregarComponente<Image>(fillGO);
             fillImg.type = Image.Type.Filled;
             fillImg.fillMethod = Image.FillMethod.Horizontal;
             fillImg.fillOrigin = (int)Image.OriginHorizontal.Left;
@@ -546,14 +553,14 @@ namespace SudoKill9.EditorTools
         {
             GameObject termGO = ObtenerOCrearHijo(parent, "CMDTerminalHUD");
 
-            RectTransform rt = termGO.GetComponent<RectTransform>();
+            RectTransform rt = ObtenerOAgregarComponente<RectTransform>(termGO);
             rt.anchorMin = new Vector2(1f, 1f);
             rt.anchorMax = new Vector2(1f, 1f);
             rt.pivot = new Vector2(1f, 1f);
             rt.anchoredPosition = new Vector2(-25f, -25f);
             rt.sizeDelta = new Vector2(460f, 155f);
 
-            Image panelImg = termGO.GetComponent<Image>() ?? termGO.AddComponent<Image>();
+            Image panelImg = ObtenerOAgregarComponente<Image>(termGO);
             if (panelSprite != null)
             {
                 panelImg.sprite = panelSprite;
@@ -595,17 +602,17 @@ namespace SudoKill9.EditorTools
         {
             GameObject bsodGO = ObtenerOCrearHijo(parent, "BSOD_GlitchOverlay");
 
-            RectTransform rt = bsodGO.GetComponent<RectTransform>();
+            RectTransform rt = ObtenerOAgregarComponente<RectTransform>(bsodGO);
             rt.anchorMin = Vector2.zero;
             rt.anchorMax = Vector2.one;
             rt.sizeDelta = Vector2.zero;
 
-            CanvasGroup cg = bsodGO.GetComponent<CanvasGroup>() ?? bsodGO.AddComponent<CanvasGroup>();
+            CanvasGroup cg = ObtenerOAgregarComponente<CanvasGroup>(bsodGO);
             cg.alpha = 0f;
             cg.blocksRaycasts = false;
             cg.interactable = false;
 
-            Image fondo = bsodGO.GetComponent<Image>() ?? bsodGO.AddComponent<Image>();
+            Image fondo = ObtenerOAgregarComponente<Image>(bsodGO);
             fondo.color = new Color(0f, 0.47f, 0.84f, 1f); // #0078D7
 
             // Carita :(
@@ -638,7 +645,7 @@ namespace SudoKill9.EditorTools
                             "Lo que falló: win32kfull.sys (Windows Defender Rootkit)";
             stopCode.color = Color.white;
 
-            BSODGlitchEffect effect = bsodGO.GetComponent<BSODGlitchEffect>() ?? bsodGO.AddComponent<BSODGlitchEffect>();
+            BSODGlitchEffect effect = ObtenerOAgregarComponente<BSODGlitchEffect>(bsodGO);
 
             SerializedObject so = new SerializedObject(effect);
             so.FindProperty("canvasGroup").objectReferenceValue = cg;
@@ -653,23 +660,23 @@ namespace SudoKill9.EditorTools
         {
             GameObject screenGO = ObtenerOCrearHijo(parent, "VictoryDefeatScreen");
 
-            RectTransform rt = screenGO.GetComponent<RectTransform>();
+            RectTransform rt = ObtenerOAgregarComponente<RectTransform>(screenGO);
             rt.anchorMin = Vector2.zero;
             rt.anchorMax = Vector2.one;
             rt.sizeDelta = Vector2.zero;
 
-            CanvasGroup cg = screenGO.GetComponent<CanvasGroup>() ?? screenGO.AddComponent<CanvasGroup>();
+            CanvasGroup cg = ObtenerOAgregarComponente<CanvasGroup>(screenGO);
             cg.alpha = 0f;
             cg.blocksRaycasts = false;
             cg.interactable = false;
 
             // 1. Panel de Victoria
             GameObject vicGO = ObtenerOCrearHijo(screenGO.transform, "VictoryPanel");
-            RectTransform rtVic = vicGO.GetComponent<RectTransform>();
+            RectTransform rtVic = ObtenerOAgregarComponente<RectTransform>(vicGO);
             rtVic.anchorMin = new Vector2(0.5f, 0.5f);
             rtVic.anchorMax = new Vector2(0.5f, 0.5f);
             rtVic.sizeDelta = new Vector2(680f, 380f);
-            Image vicImg = vicGO.GetComponent<Image>() ?? vicGO.AddComponent<Image>();
+            Image vicImg = ObtenerOAgregarComponente<Image>(vicGO);
             if (panelSprite != null) { vicImg.sprite = panelSprite; vicImg.type = Image.Type.Sliced; }
             vicImg.color = new Color(0.08f, 0.16f, 0.14f, 0.96f); // Verde militar oscuro
 
@@ -696,11 +703,11 @@ namespace SudoKill9.EditorTools
 
             // 2. Panel de Derrota
             GameObject defGO = ObtenerOCrearHijo(screenGO.transform, "DefeatPanel");
-            RectTransform rtDef = defGO.GetComponent<RectTransform>();
+            RectTransform rtDef = ObtenerOAgregarComponente<RectTransform>(defGO);
             rtDef.anchorMin = new Vector2(0.5f, 0.5f);
             rtDef.anchorMax = new Vector2(0.5f, 0.5f);
             rtDef.sizeDelta = new Vector2(680f, 380f);
-            Image defImg = defGO.GetComponent<Image>() ?? defGO.AddComponent<Image>();
+            Image defImg = ObtenerOAgregarComponente<Image>(defGO);
             if (panelSprite != null) { defImg.sprite = panelSprite; defImg.type = Image.Type.Sliced; }
             defImg.color = new Color(0.18f, 0.06f, 0.06f, 0.96f); // Rojo carmesí oscuro
 
@@ -725,7 +732,7 @@ namespace SudoKill9.EditorTools
             Button defBtnRetry = CrearBotonTactico(defGO.transform, "Btn_Reintentar", "REINTENTAR", new Vector2(-150f, -120f), font, buttonSprite);
             Button defBtnMenu = CrearBotonTactico(defGO.transform, "Btn_MenuPrincipal", "MENÚ PRINCIPAL", new Vector2(150f, -120f), font, buttonSprite);
 
-            VictoryDefeatScreen screenComp = screenGO.GetComponent<VictoryDefeatScreen>() ?? screenGO.AddComponent<VictoryDefeatScreen>();
+            VictoryDefeatScreen screenComp = ObtenerOAgregarComponente<VictoryDefeatScreen>(screenGO);
 
             SerializedObject so = new SerializedObject(screenComp);
             so.FindProperty("victoryPanel").objectReferenceValue = vicGO;
@@ -747,11 +754,11 @@ namespace SudoKill9.EditorTools
         private static Button CrearBotonTactico(Transform parent, string nombre, string texto, Vector2 pos, TMP_FontAsset font, Sprite btnSprite)
         {
             GameObject btnGO = ObtenerOCrearHijo(parent, nombre);
-            RectTransform rt = btnGO.GetComponent<RectTransform>();
+            RectTransform rt = ObtenerOAgregarComponente<RectTransform>(btnGO);
             rt.anchoredPosition = pos;
             rt.sizeDelta = new Vector2(250f, 50f);
 
-            Image img = btnGO.GetComponent<Image>() ?? btnGO.AddComponent<Image>();
+            Image img = ObtenerOAgregarComponente<Image>(btnGO);
             if (btnSprite != null)
             {
                 img.sprite = btnSprite;
@@ -759,7 +766,7 @@ namespace SudoKill9.EditorTools
             }
             img.color = new Color(0.10f, 0.16f, 0.22f, 0.95f);
 
-            Button btn = btnGO.GetComponent<Button>() ?? btnGO.AddComponent<Button>();
+            Button btn = ObtenerOAgregarComponente<Button>(btnGO);
 
             // Efectos tácticos interactivos
             if (btnGO.GetComponent<MenuButtonEffects>() == null)
@@ -796,12 +803,19 @@ namespace SudoKill9.EditorTools
         private static TMP_Text ObtenerOCrearTexto(Transform parent, string nombre, TMP_FontAsset font, float tamano, FontStyles estilo, TextAlignmentOptions alineacion)
         {
             GameObject go = ObtenerOCrearHijo(parent, nombre);
-            TextMeshProUGUI tmp = go.GetComponent<TextMeshProUGUI>() ?? go.AddComponent<TextMeshProUGUI>();
+            TextMeshProUGUI tmp = ObtenerOAgregarComponente<TextMeshProUGUI>(go);
             if (font != null) tmp.font = font;
             tmp.fontSize = tamano;
             tmp.fontStyle = estilo;
             tmp.alignment = alineacion;
             return tmp;
+        }
+
+        private static T ObtenerOAgregarComponente<T>(GameObject go) where T : Component
+        {
+            T comp = go.GetComponent<T>();
+            if (comp == null) comp = go.AddComponent<T>();
+            return comp;
         }
 
         private static void EjecutarPruebasVerificacion()

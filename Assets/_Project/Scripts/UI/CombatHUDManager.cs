@@ -448,15 +448,25 @@ namespace SudoKill9.UI
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AsegurarCanvasCombateEnRuntime()
         {
-            // Solo auto-inicializar si la escena activa contiene al Jefe o al Jugador Linux
+            // Solo auto-inicializar si la escena activa contiene al Jefe Windows (prueba_Expe_K)
             var bossAI = Object.FindFirstObjectByType<WindowsBossAI>();
-            var combatIK = Object.FindFirstObjectByType<LinuxCombatIK>();
-            if (bossAI == null && combatIK == null) return;
+            if (bossAI == null) return;
 
             // Si ya existe una instancia o Canvas en la escena, no duplicar
             if (Instance != null || Object.FindFirstObjectByType<CombatHUDManager>() != null) return;
 
+            var combatIK = Object.FindFirstObjectByType<LinuxCombatIK>();
             ConstruirCanvasRuntime(bossAI, combatIK);
+        }
+
+        private static T ObtenerOAgregarComponente<T>(GameObject go) where T : Component
+        {
+            T comp = go.GetComponent<T>();
+            if (comp == null)
+            {
+                comp = go.AddComponent<T>();
+            }
+            return comp;
         }
 
         public static GameObject ConstruirCanvasRuntime(WindowsBossAI bossRef = null, LinuxCombatIK playerRef = null)
@@ -505,20 +515,26 @@ namespace SudoKill9.UI
 
             // 4. Crear Canvas Principal
             GameObject canvasGO = GameObject.Find("CombatUI_Canvas");
+            if (canvasGO != null && canvasGO.GetComponent<RectTransform>() == null)
+            {
+                if (Application.isPlaying) Destroy(canvasGO);
+                else DestroyImmediate(canvasGO);
+                canvasGO = null;
+            }
             if (canvasGO == null) canvasGO = new GameObject("CombatUI_Canvas", typeof(RectTransform));
 
-            Canvas canvas = canvasGO.GetComponent<Canvas>() ?? canvasGO.AddComponent<Canvas>();
+            Canvas canvas = ObtenerOAgregarComponente<Canvas>(canvasGO);
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 20;
 
-            CanvasScaler scaler = canvasGO.GetComponent<CanvasScaler>() ?? canvasGO.AddComponent<CanvasScaler>();
+            CanvasScaler scaler = ObtenerOAgregarComponente<CanvasScaler>(canvasGO);
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1920, 1080);
             scaler.matchWidthOrHeight = 0.5f;
 
-            if (canvasGO.GetComponent<GraphicRaycaster>() == null) canvasGO.AddComponent<GraphicRaycaster>();
+            ObtenerOAgregarComponente<GraphicRaycaster>(canvasGO);
 
-            CombatHUDManager hud = canvasGO.GetComponent<CombatHUDManager>() ?? canvasGO.AddComponent<CombatHUDManager>();
+            CombatHUDManager hud = ObtenerOAgregarComponente<CombatHUDManager>(canvasGO);
 
             // 5. Construir Elementos del HUD
             ConstruirBarraBossRuntime(canvasGO.transform, font, panelSprite, hud);
@@ -534,9 +550,7 @@ namespace SudoKill9.UI
 
         private static void ConstruirBarraBossRuntime(Transform parent, TMP_FontAsset font, Sprite panelSprite, CombatHUDManager hud)
         {
-            Transform tBoss = parent.Find("BossHealthBar");
-            GameObject bossGO = tBoss != null ? tBoss.gameObject : new GameObject("BossHealthBar", typeof(RectTransform));
-            bossGO.transform.SetParent(parent, false);
+            GameObject bossGO = ObtenerOCrearHijoRuntime(parent, "BossHealthBar");
 
             RectTransform rt = bossGO.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(0.5f, 1f);
@@ -545,7 +559,7 @@ namespace SudoKill9.UI
             rt.anchoredPosition = new Vector2(0f, -25f);
             rt.sizeDelta = new Vector2(620f, 75f);
 
-            Image panelImg = bossGO.GetComponent<Image>() ?? bossGO.AddComponent<Image>();
+            Image panelImg = ObtenerOAgregarComponente<Image>(bossGO);
             if (panelSprite != null) { panelImg.sprite = panelSprite; panelImg.type = Image.Type.Sliced; }
             panelImg.color = new Color(0.12f, 0.08f, 0.08f, 0.92f);
 
@@ -566,15 +580,15 @@ namespace SudoKill9.UI
             rtBarArea.offsetMin = new Vector2(18f, 22f);
             rtBarArea.offsetMax = new Vector2(-18f, -30f);
 
-            Image barBg = barArea.GetComponent<Image>() ?? barArea.AddComponent<Image>();
-            barBg.color = new Color(0.04f, 0.04f, 0.06f, 0.95f);
+            Image barBg = ObtenerOAgregarComponente<Image>(barArea);
+            barBg.color = new Color(0.04f, 0.06f, 0.05f, 0.95f);
 
             GameObject decayGO = ObtenerOCrearHijoRuntime(barArea.transform, "DecayBar");
             RectTransform rtDecay = decayGO.GetComponent<RectTransform>();
             rtDecay.anchorMin = Vector2.zero;
             rtDecay.anchorMax = Vector2.one;
             rtDecay.sizeDelta = Vector2.zero;
-            Image decayImg = decayGO.GetComponent<Image>() ?? decayGO.AddComponent<Image>();
+            Image decayImg = ObtenerOAgregarComponente<Image>(decayGO);
             decayImg.type = Image.Type.Filled;
             decayImg.fillMethod = Image.FillMethod.Horizontal;
             decayImg.fillOrigin = (int)Image.OriginHorizontal.Left;
@@ -586,7 +600,7 @@ namespace SudoKill9.UI
             rtFill.anchorMin = Vector2.zero;
             rtFill.anchorMax = Vector2.one;
             rtFill.sizeDelta = Vector2.zero;
-            Image fillImg = fillGO.GetComponent<Image>() ?? fillGO.AddComponent<Image>();
+            Image fillImg = ObtenerOAgregarComponente<Image>(fillGO);
             fillImg.type = Image.Type.Filled;
             fillImg.fillMethod = Image.FillMethod.Horizontal;
             fillImg.fillOrigin = (int)Image.OriginHorizontal.Left;
@@ -623,9 +637,7 @@ namespace SudoKill9.UI
 
         private static void ConstruirBarraTuxRuntime(Transform parent, TMP_FontAsset font, Sprite panelSprite, CombatHUDManager hud)
         {
-            Transform tTux = parent.Find("TuxHealthPlate");
-            GameObject tuxGO = tTux != null ? tTux.gameObject : new GameObject("TuxHealthPlate", typeof(RectTransform));
-            tuxGO.transform.SetParent(parent, false);
+            GameObject tuxGO = ObtenerOCrearHijoRuntime(parent, "TuxHealthPlate");
 
             RectTransform rt = tuxGO.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(0f, 1f);
@@ -634,7 +646,7 @@ namespace SudoKill9.UI
             rt.anchoredPosition = new Vector2(30f, -25f);
             rt.sizeDelta = new Vector2(320f, 65f);
 
-            Image panelImg = tuxGO.GetComponent<Image>() ?? tuxGO.AddComponent<Image>();
+            Image panelImg = ObtenerOAgregarComponente<Image>(tuxGO);
             if (panelSprite != null) { panelImg.sprite = panelSprite; panelImg.type = Image.Type.Sliced; }
             panelImg.color = new Color(0.14f, 0.22f, 0.18f, 0.94f);
 
@@ -655,7 +667,7 @@ namespace SudoKill9.UI
             rtBarArea.offsetMin = new Vector2(16f, 12f);
             rtBarArea.offsetMax = new Vector2(-16f, -28f);
 
-            Image barBg = barArea.GetComponent<Image>() ?? barArea.AddComponent<Image>();
+            Image barBg = ObtenerOAgregarComponente<Image>(barArea);
             barBg.color = new Color(0.05f, 0.08f, 0.06f, 0.95f);
 
             GameObject fillGO = ObtenerOCrearHijoRuntime(barArea.transform, "FillBar");
@@ -663,7 +675,7 @@ namespace SudoKill9.UI
             rtFill.anchorMin = Vector2.zero;
             rtFill.anchorMax = Vector2.one;
             rtFill.sizeDelta = Vector2.zero;
-            Image fillImg = fillGO.GetComponent<Image>() ?? fillGO.AddComponent<Image>();
+            Image fillImg = ObtenerOAgregarComponente<Image>(fillGO);
             fillImg.type = Image.Type.Filled;
             fillImg.fillMethod = Image.FillMethod.Horizontal;
             fillImg.fillOrigin = (int)Image.OriginHorizontal.Left;
@@ -688,9 +700,7 @@ namespace SudoKill9.UI
 
         private static void ConstruirTerminalCMDRuntime(Transform parent, TMP_FontAsset font, Sprite panelSprite, CombatHUDManager hud)
         {
-            Transform tTerminal = parent.Find("CMDTerminalHUD");
-            GameObject termGO = tTerminal != null ? tTerminal.gameObject : new GameObject("CMDTerminalHUD", typeof(RectTransform));
-            termGO.transform.SetParent(parent, false);
+            GameObject termGO = ObtenerOCrearHijoRuntime(parent, "CMDTerminalHUD");
 
             RectTransform rt = termGO.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(1f, 1f);
@@ -699,7 +709,7 @@ namespace SudoKill9.UI
             rt.anchoredPosition = new Vector2(-25f, -25f);
             rt.sizeDelta = new Vector2(460f, 155f);
 
-            Image panelImg = termGO.GetComponent<Image>() ?? termGO.AddComponent<Image>();
+            Image panelImg = ObtenerOAgregarComponente<Image>(termGO);
             if (panelSprite != null) { panelImg.sprite = panelSprite; panelImg.type = Image.Type.Sliced; }
             panelImg.color = new Color(0.04f, 0.06f, 0.05f, 0.88f);
 
@@ -730,21 +740,19 @@ namespace SudoKill9.UI
 
         private static void ConstruirBSODRuntime(Transform parent, TMP_FontAsset font)
         {
-            Transform tBSOD = parent.Find("BSOD_GlitchOverlay");
-            GameObject bsodGO = tBSOD != null ? tBSOD.gameObject : new GameObject("BSOD_GlitchOverlay", typeof(RectTransform));
-            bsodGO.transform.SetParent(parent, false);
+            GameObject bsodGO = ObtenerOCrearHijoRuntime(parent, "BSOD_GlitchOverlay");
 
             RectTransform rt = bsodGO.GetComponent<RectTransform>();
             rt.anchorMin = Vector2.zero;
             rt.anchorMax = Vector2.one;
             rt.sizeDelta = Vector2.zero;
 
-            CanvasGroup cg = bsodGO.GetComponent<CanvasGroup>() ?? bsodGO.AddComponent<CanvasGroup>();
+            CanvasGroup cg = ObtenerOAgregarComponente<CanvasGroup>(bsodGO);
             cg.alpha = 0f;
             cg.blocksRaycasts = false;
             cg.interactable = false;
 
-            Image fondo = bsodGO.GetComponent<Image>() ?? bsodGO.AddComponent<Image>();
+            Image fondo = ObtenerOAgregarComponente<Image>(bsodGO);
             fondo.color = new Color(0f, 0.47f, 0.84f, 1f);
 
             TMP_Text face = ObtenerOCrearTextoRuntime(bsodGO.transform, "CaraTriste", font, 90, FontStyles.Normal, TextAlignmentOptions.Left);
@@ -771,22 +779,20 @@ namespace SudoKill9.UI
             stopCode.text = "Código de detención: CRITICAL_PROCESS_DIED\nLo que falló: win32kfull.sys (Windows Defender Rootkit)";
             stopCode.color = Color.white;
 
-            BSODGlitchEffect effect = bsodGO.GetComponent<BSODGlitchEffect>() ?? bsodGO.AddComponent<BSODGlitchEffect>();
+            BSODGlitchEffect effect = ObtenerOAgregarComponente<BSODGlitchEffect>(bsodGO);
             effect.ConfigurarReferencias(cg, fondo, face, msg, stopCode);
         }
 
         private static void ConstruirVictoriaDerrotaRuntime(Transform parent, TMP_FontAsset font, Sprite buttonSprite, Sprite panelSprite)
         {
-            Transform tScreen = parent.Find("VictoryDefeatScreen");
-            GameObject screenGO = tScreen != null ? tScreen.gameObject : new GameObject("VictoryDefeatScreen", typeof(RectTransform));
-            screenGO.transform.SetParent(parent, false);
+            GameObject screenGO = ObtenerOCrearHijoRuntime(parent, "VictoryDefeatScreen");
 
             RectTransform rt = screenGO.GetComponent<RectTransform>();
             rt.anchorMin = Vector2.zero;
             rt.anchorMax = Vector2.one;
             rt.sizeDelta = Vector2.zero;
 
-            CanvasGroup cg = screenGO.GetComponent<CanvasGroup>() ?? screenGO.AddComponent<CanvasGroup>();
+            CanvasGroup cg = ObtenerOAgregarComponente<CanvasGroup>(screenGO);
             cg.alpha = 0f;
             cg.blocksRaycasts = false;
             cg.interactable = false;
@@ -797,7 +803,7 @@ namespace SudoKill9.UI
             rtVic.anchorMin = new Vector2(0.5f, 0.5f);
             rtVic.anchorMax = new Vector2(0.5f, 0.5f);
             rtVic.sizeDelta = new Vector2(680f, 380f);
-            Image vicImg = vicGO.GetComponent<Image>() ?? vicGO.AddComponent<Image>();
+            Image vicImg = ObtenerOAgregarComponente<Image>(vicGO);
             if (panelSprite != null) { vicImg.sprite = panelSprite; vicImg.type = Image.Type.Sliced; }
             vicImg.color = new Color(0.08f, 0.16f, 0.14f, 0.96f);
 
@@ -828,7 +834,7 @@ namespace SudoKill9.UI
             rtDef.anchorMin = new Vector2(0.5f, 0.5f);
             rtDef.anchorMax = new Vector2(0.5f, 0.5f);
             rtDef.sizeDelta = new Vector2(680f, 380f);
-            Image defImg = defGO.GetComponent<Image>() ?? defGO.AddComponent<Image>();
+            Image defImg = ObtenerOAgregarComponente<Image>(defGO);
             if (panelSprite != null) { defImg.sprite = panelSprite; defImg.type = Image.Type.Sliced; }
             defImg.color = new Color(0.18f, 0.06f, 0.06f, 0.96f);
 
@@ -853,7 +859,7 @@ namespace SudoKill9.UI
             Button defBtnRetry = CrearBotonTacticoRuntime(defGO.transform, "Btn_Reintentar", "REINTENTAR", new Vector2(-150f, -120f), font, buttonSprite);
             Button defBtnMenu = CrearBotonTacticoRuntime(defGO.transform, "Btn_MenuPrincipal", "MENÚ PRINCIPAL", new Vector2(150f, -120f), font, buttonSprite);
 
-            VictoryDefeatScreen screenComp = screenGO.GetComponent<VictoryDefeatScreen>() ?? screenGO.AddComponent<VictoryDefeatScreen>();
+            VictoryDefeatScreen screenComp = ObtenerOAgregarComponente<VictoryDefeatScreen>(screenGO);
             screenComp.ConfigurarReferencias(
                 vicGO, defGO, cg,
                 vicTitle, vicSub, vicStats, vicBtnRestart, vicBtnMenu,
@@ -867,11 +873,11 @@ namespace SudoKill9.UI
             rt.anchoredPosition = pos;
             rt.sizeDelta = new Vector2(250f, 50f);
 
-            Image img = btnGO.GetComponent<Image>() ?? btnGO.AddComponent<Image>();
+            Image img = ObtenerOAgregarComponente<Image>(btnGO);
             if (btnSprite != null) { img.sprite = btnSprite; img.type = Image.Type.Sliced; }
             img.color = new Color(0.10f, 0.16f, 0.22f, 0.95f);
 
-            Button btn = btnGO.GetComponent<Button>() ?? btnGO.AddComponent<Button>();
+            Button btn = ObtenerOAgregarComponente<Button>(btnGO);
 
             if (btnGO.GetComponent<MenuButtonEffects>() == null)
             {
@@ -891,7 +897,15 @@ namespace SudoKill9.UI
         private static GameObject ObtenerOCrearHijoRuntime(Transform parent, string nombre)
         {
             Transform t = parent.Find(nombre);
-            if (t != null) return t.gameObject;
+            if (t != null)
+            {
+                if (t.GetComponent<RectTransform>() != null)
+                {
+                    return t.gameObject;
+                }
+                if (Application.isPlaying) Destroy(t.gameObject);
+                else DestroyImmediate(t.gameObject);
+            }
             GameObject go = new GameObject(nombre, typeof(RectTransform));
             go.transform.SetParent(parent, false);
             return go;
@@ -900,7 +914,7 @@ namespace SudoKill9.UI
         private static TMP_Text ObtenerOCrearTextoRuntime(Transform parent, string nombre, TMP_FontAsset font, float tamano, FontStyles estilo, TextAlignmentOptions alineacion)
         {
             GameObject go = ObtenerOCrearHijoRuntime(parent, nombre);
-            TextMeshProUGUI tmp = go.GetComponent<TextMeshProUGUI>() ?? go.AddComponent<TextMeshProUGUI>();
+            TextMeshProUGUI tmp = ObtenerOAgregarComponente<TextMeshProUGUI>(go);
             if (font != null) tmp.font = font;
             tmp.fontSize = tamano;
             tmp.fontStyle = estilo;
