@@ -20,8 +20,7 @@ public static class OptimizeTerrenoJuego
     // batching would duplicate their vertex data per instance in memory. URP's SRP Batcher already batches them.
     private const StaticEditorFlags EnvironmentFlags =
         StaticEditorFlags.OccludeeStatic |
-        StaticEditorFlags.OccluderStatic |
-        StaticEditorFlags.NavigationStatic;
+        StaticEditorFlags.OccluderStatic;
 
     [MenuItem("Tools/Optimize Terreno Juego Scene")]
     public static void Run()
