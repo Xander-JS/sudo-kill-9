@@ -51,6 +51,7 @@ namespace SudoKill9.EditorTools
             var activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
             if (activeScene.path != ScenePath) return;
 
+            FixHovlFireURP.RepararTodosLosMateriales(silent: true);
             AnimatorController ctrl = AsegurarEstadosEspecialesEnController();
             ConfigurarJugadorLinux();
             ConfigurarJefeWindows(ctrl);
@@ -63,6 +64,9 @@ namespace SudoKill9.EditorTools
         public static void EjecutarConfiguracionCompleta()
         {
             Debug.Log("<color=cyan>[SetupCombatUI]</color> === Iniciando Configuración Integral de Combate y HUD ===");
+
+            // 0. Reparar shaders y materiales de Hovl Studio en URP
+            FixHovlFireURP.RepararTodosLosMateriales(silent: false);
 
             // 1. Abrir escena si no está activa
             AsegurarEscenaAbierta();

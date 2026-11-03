@@ -126,6 +126,20 @@ public class WindowsCommandAttacks : MonoBehaviour
     [Tooltip("Renderizado visual del rayo de energía Kamehameha.")]
     [SerializeField] private LineRenderer hazKamehameha;
 
+    [Header("Efectos Visuales Hovl Studio (Procedural Fire / Plasma)")]
+    [Tooltip("Prefab del vórtice de carga telegrafiado (ej. RotatorPS1 o Magic fire pro blue).")]
+    [SerializeField] private GameObject prefabEfectoCarga;
+
+    [Tooltip("Prefab del chorro/haz destructivo de plasma (ej. Magic fire pro blue).")]
+    [SerializeField] private GameObject prefabEfectoRayo;
+
+    [Tooltip("Prefab del efecto de impacto cuando el rayo colisiona (ej. Explosion).")]
+    [SerializeField] private GameObject prefabImpactoRayo;
+
+    private GameObject instanciaEfectoCarga;
+    private GameObject instanciaEfectoRayo;
+    private GameObject instanciaImpactoRayo;
+
     private float temporizadorKamehameha = 5.0f;
     private float intervaloDanioRayo = 0.5f;
     private float temporizadorPulsoRayo = 0f;
@@ -417,6 +431,16 @@ public class WindowsCommandAttacks : MonoBehaviour
             animator.CrossFadeInFixedTime("Se prepara para atacar", 0.15f);
         }
 
+        AsegurarInstanciasEfectos();
+        Vector3 origenGuia = transform.position + transform.forward * 0.8f + Vector3.up * 1.2f;
+
+        if (instanciaEfectoCarga != null)
+        {
+            if (!instanciaEfectoCarga.activeSelf) instanciaEfectoCarga.SetActive(true);
+            instanciaEfectoCarga.transform.position = origenGuia;
+            instanciaEfectoCarga.transform.rotation = transform.rotation;
+        }
+
         if (guiaLaserCarga != null)
         {
             guiaLaserCarga.enabled = true;
@@ -441,10 +465,17 @@ public class WindowsCommandAttacks : MonoBehaviour
                 }
             }
 
+            origenGuia = transform.position + transform.forward * 0.8f + Vector3.up * 1.2f;
+
+            if (instanciaEfectoCarga != null)
+            {
+                instanciaEfectoCarga.transform.position = origenGuia;
+                instanciaEfectoCarga.transform.rotation = transform.rotation;
+            }
+
             // Actualizar guía de puntería
             if (guiaLaserCarga != null)
             {
-                Vector3 origenGuia = transform.position + transform.forward * 0.8f + Vector3.up * 1.2f;
                 guiaLaserCarga.SetPosition(0, origenGuia);
                 guiaLaserCarga.SetPosition(1, origenGuia + transform.forward * alcanceRayo);
             }
@@ -453,6 +484,11 @@ public class WindowsCommandAttacks : MonoBehaviour
         }
 
         if (bossAI != null && bossAI.IsDead) yield break;
+
+        if (instanciaEfectoCarga != null && instanciaEfectoCarga.activeSelf)
+        {
+            instanciaEfectoCarga.SetActive(false);
+        }
 
         if (guiaLaserCarga != null) guiaLaserCarga.enabled = false;
         estaCargandoRayo = false;
@@ -475,6 +511,14 @@ public class WindowsCommandAttacks : MonoBehaviour
             hazKamehameha.enabled = true;
         }
 
+        if (instanciaEfectoRayo != null)
+        {
+            if (!instanciaEfectoRayo.activeSelf) instanciaEfectoRayo.SetActive(true);
+            Vector3 origenRayo = transform.position + transform.forward * 0.8f + Vector3.up * 1.2f;
+            instanciaEfectoRayo.transform.position = origenRayo;
+            instanciaEfectoRayo.transform.rotation = Quaternion.LookRotation(transform.forward);
+        }
+
         float tiempoRayo = 0f;
         while (tiempoRayo < duracionDisparo)
         {
@@ -488,6 +532,8 @@ public class WindowsCommandAttacks : MonoBehaviour
         if (bossAI != null && bossAI.IsDead) yield break;
 
         if (hazKamehameha != null) hazKamehameha.enabled = false;
+        if (instanciaEfectoRayo != null && instanciaEfectoRayo.activeSelf) instanciaEfectoRayo.SetActive(false);
+        if (instanciaImpactoRayo != null && instanciaImpactoRayo.activeSelf) instanciaImpactoRayo.SetActive(false);
         estaDisparandoRayo = false;
 
         // --------------------------------------------------------------------- //
@@ -529,6 +575,12 @@ public class WindowsCommandAttacks : MonoBehaviour
         Vector3 direccion = transform.forward;
         Vector3 finRayo = origen + direccion * alcanceRayo;
 
+        if (instanciaEfectoRayo != null)
+        {
+            instanciaEfectoRayo.transform.position = origen;
+            instanciaEfectoRayo.transform.rotation = Quaternion.LookRotation(direccion);
+        }
+
         temporizadorPulsoRayo -= Time.deltaTime;
         bool aplicarDano = temporizadorPulsoRayo <= 0f;
         if (aplicarDano)
@@ -536,8 +588,42 @@ public class WindowsCommandAttacks : MonoBehaviour
             temporizadorPulsoRayo = intervaloDanioRayo;
         }
 
-        // Trazar SphereCast continuo en la trayectoria del rayo
-        RaycastHit[] hits = Physics.SphereCastAll(origen, radioRayo, direccion, alcanceRayo, ~0, QueryTriggerInteraction.Ignore);
+        // Trazar Raycast para detectar punto de impacto en obstáculos o jugador
+        RaycastHit hitImpacto;
+        Vector3 puntoImpacto = finRayo;
+        bool huboImpacto = false;
+        if (Physics.Raycast(origen, direccion, out hitImpacto, alcanceRayo, ~0, QueryTriggerInteraction.Ignore))
+        {
+            if (!hitImpacto.collider.transform.IsChildOf(transform) && hitImpacto.collider.transform != transform)
+            {
+                puntoImpacto = hitImpacto.point;
+                huboImpacto = true;
+            }
+        }
+
+        if (hazKamehameha != null)
+        {
+            hazKamehameha.SetPosition(0, origen);
+            hazKamehameha.SetPosition(1, puntoImpacto);
+        }
+
+        if (instanciaImpactoRayo != null)
+        {
+            if (huboImpacto)
+            {
+                if (!instanciaImpactoRayo.activeSelf) instanciaImpactoRayo.SetActive(true);
+                instanciaImpactoRayo.transform.position = puntoImpacto;
+                instanciaImpactoRayo.transform.rotation = Quaternion.LookRotation(hitImpacto.normal);
+            }
+            else
+            {
+                if (instanciaImpactoRayo.activeSelf) instanciaImpactoRayo.SetActive(false);
+            }
+        }
+
+        // Trazar SphereCast continuo en la trayectoria del rayo para aplicar daño
+        float distanciaEfectiva = Vector3.Distance(origen, puntoImpacto);
+        RaycastHit[] hits = Physics.SphereCastAll(origen, radioRayo, direccion, distanciaEfectiva, ~0, QueryTriggerInteraction.Ignore);
 
         if (hits != null && hits.Length > 0)
         {
@@ -566,12 +652,6 @@ public class WindowsCommandAttacks : MonoBehaviour
                     cc.Move(direccion * 4.0f * Time.deltaTime);
                 }
             }
-        }
-
-        if (hazKamehameha != null)
-        {
-            hazKamehameha.SetPosition(0, origen);
-            hazKamehameha.SetPosition(1, finRayo);
         }
     }
 
@@ -649,11 +729,52 @@ public class WindowsCommandAttacks : MonoBehaviour
         if (guiaLaserCarga != null) guiaLaserCarga.enabled = false;
         if (hazKamehameha != null) hazKamehameha.enabled = false;
         if (escudoVisual != null) escudoVisual.SetActive(false);
+        if (instanciaEfectoCarga != null && instanciaEfectoCarga.activeSelf) instanciaEfectoCarga.SetActive(false);
+        if (instanciaEfectoRayo != null && instanciaEfectoRayo.activeSelf) instanciaEfectoRayo.SetActive(false);
+        if (instanciaImpactoRayo != null && instanciaImpactoRayo.activeSelf) instanciaImpactoRayo.SetActive(false);
         estaCargandoRayo = false;
         estaDisparandoRayo = false;
         estaExhausto = false;
         firewallActivo = false;
         estaEsquivando = false;
+    }
+
+    private void OnDestroy()
+    {
+        if (instanciaImpactoRayo != null)
+        {
+            if (Application.isPlaying) Destroy(instanciaImpactoRayo);
+            else DestroyImmediate(instanciaImpactoRayo);
+        }
+    }
+
+    private void AsegurarInstanciasEfectos()
+    {
+        GarantizarComponentesVisuales();
+
+        if (instanciaEfectoCarga == null && prefabEfectoCarga != null)
+        {
+            instanciaEfectoCarga = Instantiate(prefabEfectoCarga, transform);
+            instanciaEfectoCarga.name = "InstanciaEfectoCarga_Hovl";
+            instanciaEfectoCarga.transform.localScale = Vector3.one * 0.75f;
+            instanciaEfectoCarga.SetActive(false);
+        }
+
+        if (instanciaEfectoRayo == null && prefabEfectoRayo != null)
+        {
+            instanciaEfectoRayo = Instantiate(prefabEfectoRayo, transform);
+            instanciaEfectoRayo.name = "InstanciaEfectoRayo_Hovl";
+            instanciaEfectoRayo.transform.localScale = new Vector3(1.3f, 1.3f, 2.5f);
+            instanciaEfectoRayo.SetActive(false);
+        }
+
+        if (instanciaImpactoRayo == null && prefabImpactoRayo != null)
+        {
+            instanciaImpactoRayo = Instantiate(prefabImpactoRayo);
+            instanciaImpactoRayo.name = "InstanciaImpactoRayo_Hovl";
+            instanciaImpactoRayo.transform.localScale = Vector3.one * 1.3f;
+            instanciaImpactoRayo.SetActive(false);
+        }
     }
 
     /// <summary>
@@ -662,6 +783,24 @@ public class WindowsCommandAttacks : MonoBehaviour
     /// </summary>
     public void GarantizarComponentesVisuales()
     {
+#if UNITY_EDITOR
+        // Descubrimiento y enlace automático de los prefabs de Hovl Studio
+        if (prefabEfectoCarga == null)
+        {
+            prefabEfectoCarga = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Procedural fire/Prefabs/RotatorPS1.prefab");
+            if (prefabEfectoCarga == null)
+                prefabEfectoCarga = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Procedural fire/Prefabs/Magic fire pro blue.prefab");
+        }
+        if (prefabEfectoRayo == null)
+        {
+            prefabEfectoRayo = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Procedural fire/Prefabs/Magic fire pro blue.prefab");
+        }
+        if (prefabImpactoRayo == null)
+        {
+            prefabImpactoRayo = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Procedural fire/Prefabs/Explosion.prefab");
+        }
+#endif
+
         // 1. Guía de Carga (Láser telegrafiado)
         if (guiaLaserCarga == null)
         {
@@ -685,11 +824,15 @@ public class WindowsCommandAttacks : MonoBehaviour
                 guiaLaserCarga.useWorldSpace = true;
                 guiaLaserCarga.enabled = false;
 
-                Shader unlit = Shader.Find("Sprites/Default") ?? Shader.Find("Universal Render Pipeline/Unlit");
+                Shader unlit = Shader.Find("Universal Render Pipeline/Particles/Unlit") 
+                             ?? Shader.Find("Universal Render Pipeline/Unlit") 
+                             ?? Shader.Find("Sprites/Default");
                 if (unlit != null)
                 {
                     Material mat = new Material(unlit);
-                    mat.color = new Color(0.1f, 0.9f, 1f, 0.75f);
+                    mat.SetFloat("_Surface", 1);
+                    mat.SetFloat("_Blend", 1);
+                    mat.color = new Color(0.1f, 0.9f, 1f, 0.85f);
                     guiaLaserCarga.material = mat;
                 }
             }
@@ -718,11 +861,15 @@ public class WindowsCommandAttacks : MonoBehaviour
                 hazKamehameha.useWorldSpace = true;
                 hazKamehameha.enabled = false;
 
-                Shader unlit = Shader.Find("Sprites/Default") ?? Shader.Find("Universal Render Pipeline/Unlit");
+                Shader unlit = Shader.Find("Universal Render Pipeline/Particles/Unlit") 
+                             ?? Shader.Find("Universal Render Pipeline/Unlit") 
+                             ?? Shader.Find("Sprites/Default");
                 if (unlit != null)
                 {
                     Material mat = new Material(unlit);
-                    mat.color = new Color(0.2f, 1f, 1f, 0.95f); // Cian brillante
+                    mat.SetFloat("_Surface", 1);
+                    mat.SetFloat("_Blend", 1);
+                    mat.color = new Color(0.15f, 0.95f, 1f, 0.95f); // Cian brillante eléctrico
                     hazKamehameha.material = mat;
                 }
             }
