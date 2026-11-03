@@ -24,6 +24,7 @@ namespace SudoKill9.EditorTools
             EditorApplication.delayCall += () =>
             {
                 if (EditorApplication.isPlayingOrWillChangePlaymode) return;
+                AssetDatabase.ImportAsset("Assets/_Project/Scenes/Experimento_K/prueba_Expe_K.unity", ImportAssetOptions.Default);
                 WireLinuxCameraPivotIfOpen(silent: true);
                 WireSceneIfOpen(silent: true);
             };
@@ -124,6 +125,19 @@ namespace SudoKill9.EditorTools
             catch (System.Exception ex)
             {
                 Debug.LogError($"[SetupWindowsBoss] Error al escribir reporte: {ex.Message}");
+            }
+        }
+
+        [MenuItem("Scenes/Abrir Escena Experimento_K (Kevin) %#k", priority = 0)]
+        public static void AbrirEscenaExperimentoK()
+        {
+            const string path = "Assets/_Project/Scenes/Experimento_K/prueba_Expe_K.unity";
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+            AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
+            if (EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            {
+                EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
+                Debug.Log($"<color=green>[SudoKill9]</color> Escena Experimento_K cargada con éxito: {path}");
             }
         }
 
