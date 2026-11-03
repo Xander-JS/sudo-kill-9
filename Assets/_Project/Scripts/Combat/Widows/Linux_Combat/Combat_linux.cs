@@ -172,6 +172,8 @@ public class LinuxCombatIK : MonoBehaviour
     // Variables privadas de animación e IK
     private Animator animator;
     private Rigidbody body;
+    private PlayerCursorAim cursorAim;
+    private IsometricCameraController isoCam;
     private int inputXHash, inputZHash, crouchHash;
     private bool hasInputParams, hasCrouchParam;
 
@@ -241,6 +243,10 @@ public class LinuxCombatIK : MonoBehaviour
             weapon.localPosition = currentPosition;
             weapon.localRotation = currentRotation;
         }
+
+        cursorAim = GetComponent<PlayerCursorAim>();
+        if (cursorAim == null) cursorAim = FindFirstObjectByType<PlayerCursorAim>(FindObjectsInactive.Include);
+        isoCam = FindFirstObjectByType<IsometricCameraController>(FindObjectsInactive.Include);
     }
 
     private void Start()
@@ -751,8 +757,12 @@ public class LinuxCombatIK : MonoBehaviour
     {
         if (pivotCamara == null) return;
 
-        // Acumulación horizontal estable sobre Y
-        yawObjetivo = NormalizarAngulo(yawObjetivo + mouseX * sensibilidadHorizontal);
+        // El cuerpo de Linux siempre apunta al cursor (PlayerCursorAim.Yaw).
+        // Mouse X ya no gira el cuerpo; solo se usa como fallback si no hay mira.
+        if (cursorAim != null)
+            yawObjetivo = cursorAim.Yaw;
+        else
+            yawObjetivo = NormalizarAngulo(yawObjetivo + mouseX * sensibilidadHorizontal);
 
         // Acumulación vertical sobre X con soporte de inversión de eje y límites estrictos
         float factorInversion = invertirEjeVertical ? 1f : -1f;
@@ -786,11 +796,17 @@ public class LinuxCombatIK : MonoBehaviour
     /// </summary>
     public Vector3 CalcularDireccionMovimientoHorizontal(float inputHorizontal, float inputVertical)
     {
-        Vector3 forwardHorizontal = transform.forward;
+        // Movimiento relativo a la dirección de apuntado (cursor). Esto hace que W = adelante
+        // del personaje, D = derecha, A = izquierda, S = atrás — independiente de la rotación
+        // del cuerpo, porque la cámara también sigue al cursor (syncWithAim=true).
+        float camYaw = cursorAim != null ? cursorAim.Yaw : (isoCam != null ? isoCam.FixedYaw : 45f);
+        Quaternion camRot = Quaternion.Euler(0f, camYaw, 0f);
+
+        Vector3 forwardHorizontal = camRot * Vector3.forward;
         forwardHorizontal.y = 0f;
         if (forwardHorizontal.sqrMagnitude > 0.0001f) forwardHorizontal.Normalize();
 
-        Vector3 rightHorizontal = transform.right;
+        Vector3 rightHorizontal = camRot * Vector3.right;
         rightHorizontal.y = 0f;
         if (rightHorizontal.sqrMagnitude > 0.0001f) rightHorizontal.Normalize();
 
