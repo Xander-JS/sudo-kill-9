@@ -505,7 +505,7 @@ namespace SudoKill9.UI
 
             // 4. Crear Canvas Principal
             GameObject canvasGO = GameObject.Find("CombatUI_Canvas");
-            if (canvasGO == null) canvasGO = new GameObject("CombatUI_Canvas");
+            if (canvasGO == null) canvasGO = new GameObject("CombatUI_Canvas", typeof(RectTransform));
 
             Canvas canvas = canvasGO.GetComponent<Canvas>() ?? canvasGO.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
@@ -535,10 +535,10 @@ namespace SudoKill9.UI
         private static void ConstruirBarraBossRuntime(Transform parent, TMP_FontAsset font, Sprite panelSprite, CombatHUDManager hud)
         {
             Transform tBoss = parent.Find("BossHealthBar");
-            GameObject bossGO = tBoss != null ? tBoss.gameObject : new GameObject("BossHealthBar");
+            GameObject bossGO = tBoss != null ? tBoss.gameObject : new GameObject("BossHealthBar", typeof(RectTransform));
             bossGO.transform.SetParent(parent, false);
 
-            RectTransform rt = bossGO.GetComponent<RectTransform>() ?? bossGO.AddComponent<RectTransform>();
+            RectTransform rt = bossGO.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(0.5f, 1f);
             rt.anchorMax = new Vector2(0.5f, 1f);
             rt.pivot = new Vector2(0.5f, 1f);
@@ -560,7 +560,7 @@ namespace SudoKill9.UI
             title.color = new Color(1f, 0.88f, 0.70f);
 
             GameObject barArea = ObtenerOCrearHijoRuntime(bossGO.transform, "BarArea");
-            RectTransform rtBarArea = barArea.GetComponent<RectTransform>() ?? barArea.AddComponent<RectTransform>();
+            RectTransform rtBarArea = barArea.GetComponent<RectTransform>();
             rtBarArea.anchorMin = new Vector2(0f, 0f);
             rtBarArea.anchorMax = new Vector2(1f, 1f);
             rtBarArea.offsetMin = new Vector2(18f, 22f);
@@ -570,7 +570,7 @@ namespace SudoKill9.UI
             barBg.color = new Color(0.04f, 0.04f, 0.06f, 0.95f);
 
             GameObject decayGO = ObtenerOCrearHijoRuntime(barArea.transform, "DecayBar");
-            RectTransform rtDecay = decayGO.GetComponent<RectTransform>() ?? decayGO.AddComponent<RectTransform>();
+            RectTransform rtDecay = decayGO.GetComponent<RectTransform>();
             rtDecay.anchorMin = Vector2.zero;
             rtDecay.anchorMax = Vector2.one;
             rtDecay.sizeDelta = Vector2.zero;
@@ -582,7 +582,7 @@ namespace SudoKill9.UI
             decayImg.color = new Color(0.85f, 0.35f, 0.10f, 0.90f);
 
             GameObject fillGO = ObtenerOCrearHijoRuntime(barArea.transform, "FillBar");
-            RectTransform rtFill = fillGO.GetComponent<RectTransform>() ?? fillGO.AddComponent<RectTransform>();
+            RectTransform rtFill = fillGO.GetComponent<RectTransform>();
             rtFill.anchorMin = Vector2.zero;
             rtFill.anchorMax = Vector2.one;
             rtFill.sizeDelta = Vector2.zero;
@@ -624,10 +624,10 @@ namespace SudoKill9.UI
         private static void ConstruirBarraTuxRuntime(Transform parent, TMP_FontAsset font, Sprite panelSprite, CombatHUDManager hud)
         {
             Transform tTux = parent.Find("TuxHealthPlate");
-            GameObject tuxGO = tTux != null ? tTux.gameObject : new GameObject("TuxHealthPlate");
+            GameObject tuxGO = tTux != null ? tTux.gameObject : new GameObject("TuxHealthPlate", typeof(RectTransform));
             tuxGO.transform.SetParent(parent, false);
 
-            RectTransform rt = tuxGO.GetComponent<RectTransform>() ?? tuxGO.AddComponent<RectTransform>();
+            RectTransform rt = tuxGO.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(0f, 1f);
             rt.anchorMax = new Vector2(0f, 1f);
             rt.pivot = new Vector2(0f, 1f);
@@ -649,7 +649,7 @@ namespace SudoKill9.UI
             title.color = new Color(0.08f, 0.88f, 0.96f);
 
             GameObject barArea = ObtenerOCrearHijoRuntime(tuxGO.transform, "BarArea");
-            RectTransform rtBarArea = barArea.GetComponent<RectTransform>() ?? barArea.AddComponent<RectTransform>();
+            RectTransform rtBarArea = barArea.GetComponent<RectTransform>();
             rtBarArea.anchorMin = new Vector2(0f, 0f);
             rtBarArea.anchorMax = new Vector2(1f, 1f);
             rtBarArea.offsetMin = new Vector2(16f, 12f);
@@ -659,7 +659,7 @@ namespace SudoKill9.UI
             barBg.color = new Color(0.05f, 0.08f, 0.06f, 0.95f);
 
             GameObject fillGO = ObtenerOCrearHijoRuntime(barArea.transform, "FillBar");
-            RectTransform rtFill = fillGO.GetComponent<RectTransform>() ?? fillGO.AddComponent<RectTransform>();
+            RectTransform rtFill = fillGO.GetComponent<RectTransform>();
             rtFill.anchorMin = Vector2.zero;
             rtFill.anchorMax = Vector2.one;
             rtFill.sizeDelta = Vector2.zero;
@@ -689,10 +689,10 @@ namespace SudoKill9.UI
         private static void ConstruirTerminalCMDRuntime(Transform parent, TMP_FontAsset font, Sprite panelSprite, CombatHUDManager hud)
         {
             Transform tTerminal = parent.Find("CMDTerminalHUD");
-            GameObject termGO = tTerminal != null ? tTerminal.gameObject : new GameObject("CMDTerminalHUD");
+            GameObject termGO = tTerminal != null ? tTerminal.gameObject : new GameObject("CMDTerminalHUD", typeof(RectTransform));
             termGO.transform.SetParent(parent, false);
 
-            RectTransform rt = termGO.GetComponent<RectTransform>() ?? termGO.AddComponent<RectTransform>();
+            RectTransform rt = termGO.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(1f, 1f);
             rt.anchorMax = new Vector2(1f, 1f);
             rt.pivot = new Vector2(1f, 1f);
@@ -731,10 +731,10 @@ namespace SudoKill9.UI
         private static void ConstruirBSODRuntime(Transform parent, TMP_FontAsset font)
         {
             Transform tBSOD = parent.Find("BSOD_GlitchOverlay");
-            GameObject bsodGO = tBSOD != null ? tBSOD.gameObject : new GameObject("BSOD_GlitchOverlay");
+            GameObject bsodGO = tBSOD != null ? tBSOD.gameObject : new GameObject("BSOD_GlitchOverlay", typeof(RectTransform));
             bsodGO.transform.SetParent(parent, false);
 
-            RectTransform rt = bsodGO.GetComponent<RectTransform>() ?? bsodGO.AddComponent<RectTransform>();
+            RectTransform rt = bsodGO.GetComponent<RectTransform>();
             rt.anchorMin = Vector2.zero;
             rt.anchorMax = Vector2.one;
             rt.sizeDelta = Vector2.zero;
@@ -778,10 +778,10 @@ namespace SudoKill9.UI
         private static void ConstruirVictoriaDerrotaRuntime(Transform parent, TMP_FontAsset font, Sprite buttonSprite, Sprite panelSprite)
         {
             Transform tScreen = parent.Find("VictoryDefeatScreen");
-            GameObject screenGO = tScreen != null ? tScreen.gameObject : new GameObject("VictoryDefeatScreen");
+            GameObject screenGO = tScreen != null ? tScreen.gameObject : new GameObject("VictoryDefeatScreen", typeof(RectTransform));
             screenGO.transform.SetParent(parent, false);
 
-            RectTransform rt = screenGO.GetComponent<RectTransform>() ?? screenGO.AddComponent<RectTransform>();
+            RectTransform rt = screenGO.GetComponent<RectTransform>();
             rt.anchorMin = Vector2.zero;
             rt.anchorMax = Vector2.one;
             rt.sizeDelta = Vector2.zero;
@@ -793,7 +793,7 @@ namespace SudoKill9.UI
 
             // Panel de Victoria
             GameObject vicGO = ObtenerOCrearHijoRuntime(screenGO.transform, "VictoryPanel");
-            RectTransform rtVic = vicGO.GetComponent<RectTransform>() ?? vicGO.AddComponent<RectTransform>();
+            RectTransform rtVic = vicGO.GetComponent<RectTransform>();
             rtVic.anchorMin = new Vector2(0.5f, 0.5f);
             rtVic.anchorMax = new Vector2(0.5f, 0.5f);
             rtVic.sizeDelta = new Vector2(680f, 380f);
@@ -824,7 +824,7 @@ namespace SudoKill9.UI
 
             // Panel de Derrota
             GameObject defGO = ObtenerOCrearHijoRuntime(screenGO.transform, "DefeatPanel");
-            RectTransform rtDef = defGO.GetComponent<RectTransform>() ?? defGO.AddComponent<RectTransform>();
+            RectTransform rtDef = defGO.GetComponent<RectTransform>();
             rtDef.anchorMin = new Vector2(0.5f, 0.5f);
             rtDef.anchorMax = new Vector2(0.5f, 0.5f);
             rtDef.sizeDelta = new Vector2(680f, 380f);
@@ -863,7 +863,7 @@ namespace SudoKill9.UI
         private static Button CrearBotonTacticoRuntime(Transform parent, string nombre, string texto, Vector2 pos, TMP_FontAsset font, Sprite btnSprite)
         {
             GameObject btnGO = ObtenerOCrearHijoRuntime(parent, nombre);
-            RectTransform rt = btnGO.GetComponent<RectTransform>() ?? btnGO.AddComponent<RectTransform>();
+            RectTransform rt = btnGO.GetComponent<RectTransform>();
             rt.anchoredPosition = pos;
             rt.sizeDelta = new Vector2(250f, 50f);
 
@@ -892,7 +892,7 @@ namespace SudoKill9.UI
         {
             Transform t = parent.Find(nombre);
             if (t != null) return t.gameObject;
-            GameObject go = new GameObject(nombre);
+            GameObject go = new GameObject(nombre, typeof(RectTransform));
             go.transform.SetParent(parent, false);
             return go;
         }

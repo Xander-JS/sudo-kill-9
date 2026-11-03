@@ -320,9 +320,14 @@ namespace SudoKill9.EditorTools
 
             // Buscar o crear Canvas
             GameObject canvasGO = GameObject.Find("CombatUI_Canvas");
+            if (canvasGO != null && canvasGO.GetComponent<RectTransform>() == null)
+            {
+                Object.DestroyImmediate(canvasGO);
+                canvasGO = null;
+            }
             if (canvasGO == null)
             {
-                canvasGO = new GameObject("CombatUI_Canvas");
+                canvasGO = new GameObject("CombatUI_Canvas", typeof(RectTransform));
                 Undo.RegisterCreatedObjectUndo(canvasGO, "Create CombatUI_Canvas");
             }
 
@@ -363,11 +368,9 @@ namespace SudoKill9.EditorTools
 
         private static void ConstruirBarraBoss(Transform parent, TMP_FontAsset font, Sprite panelSprite, CombatHUDManager hud)
         {
-            Transform tBoss = parent.Find("BossHealthBar");
-            GameObject bossGO = tBoss != null ? tBoss.gameObject : new GameObject("BossHealthBar");
-            bossGO.transform.SetParent(parent, false);
+            GameObject bossGO = ObtenerOCrearHijo(parent, "BossHealthBar");
 
-            RectTransform rt = bossGO.GetComponent<RectTransform>() ?? bossGO.AddComponent<RectTransform>();
+            RectTransform rt = bossGO.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(0.5f, 1f);
             rt.anchorMax = new Vector2(0.5f, 1f);
             rt.pivot = new Vector2(0.5f, 1f);
@@ -467,11 +470,9 @@ namespace SudoKill9.EditorTools
 
         private static void ConstruirBarraTux(Transform parent, TMP_FontAsset font, Sprite panelSprite, CombatHUDManager hud)
         {
-            Transform tTux = parent.Find("TuxHealthPlate");
-            GameObject tuxGO = tTux != null ? tTux.gameObject : new GameObject("TuxHealthPlate");
-            tuxGO.transform.SetParent(parent, false);
+            GameObject tuxGO = ObtenerOCrearHijo(parent, "TuxHealthPlate");
 
-            RectTransform rt = tuxGO.GetComponent<RectTransform>() ?? tuxGO.AddComponent<RectTransform>();
+            RectTransform rt = tuxGO.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(0f, 1f);
             rt.anchorMax = new Vector2(0f, 1f);
             rt.pivot = new Vector2(0f, 1f);
@@ -499,7 +500,7 @@ namespace SudoKill9.EditorTools
 
             // Contenedor de barra
             GameObject barArea = ObtenerOCrearHijo(tuxGO.transform, "BarArea");
-            RectTransform rtBarArea = barArea.GetComponent<RectTransform>() ?? barArea.AddComponent<RectTransform>();
+            RectTransform rtBarArea = barArea.GetComponent<RectTransform>();
             rtBarArea.anchorMin = new Vector2(0f, 0f);
             rtBarArea.anchorMax = new Vector2(1f, 1f);
             rtBarArea.offsetMin = new Vector2(16f, 12f);
@@ -510,7 +511,7 @@ namespace SudoKill9.EditorTools
 
             // Barra Frontal
             GameObject fillGO = ObtenerOCrearHijo(barArea.transform, "FillBar");
-            RectTransform rtFill = fillGO.GetComponent<RectTransform>() ?? fillGO.AddComponent<RectTransform>();
+            RectTransform rtFill = fillGO.GetComponent<RectTransform>();
             rtFill.anchorMin = Vector2.zero;
             rtFill.anchorMax = Vector2.one;
             rtFill.sizeDelta = Vector2.zero;
@@ -543,11 +544,9 @@ namespace SudoKill9.EditorTools
 
         private static void ConstruirTerminalCMD(Transform parent, TMP_FontAsset font, Sprite panelSprite, CombatHUDManager hud)
         {
-            Transform tTerminal = parent.Find("CMDTerminalHUD");
-            GameObject termGO = tTerminal != null ? tTerminal.gameObject : new GameObject("CMDTerminalHUD");
-            termGO.transform.SetParent(parent, false);
+            GameObject termGO = ObtenerOCrearHijo(parent, "CMDTerminalHUD");
 
-            RectTransform rt = termGO.GetComponent<RectTransform>() ?? termGO.AddComponent<RectTransform>();
+            RectTransform rt = termGO.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(1f, 1f);
             rt.anchorMax = new Vector2(1f, 1f);
             rt.pivot = new Vector2(1f, 1f);
@@ -594,11 +593,9 @@ namespace SudoKill9.EditorTools
 
         private static void ConstruirPanelBSOD(Transform parent, TMP_FontAsset font)
         {
-            Transform tBSOD = parent.Find("BSOD_GlitchOverlay");
-            GameObject bsodGO = tBSOD != null ? tBSOD.gameObject : new GameObject("BSOD_GlitchOverlay");
-            bsodGO.transform.SetParent(parent, false);
+            GameObject bsodGO = ObtenerOCrearHijo(parent, "BSOD_GlitchOverlay");
 
-            RectTransform rt = bsodGO.GetComponent<RectTransform>() ?? bsodGO.AddComponent<RectTransform>();
+            RectTransform rt = bsodGO.GetComponent<RectTransform>();
             rt.anchorMin = Vector2.zero;
             rt.anchorMax = Vector2.one;
             rt.sizeDelta = Vector2.zero;
@@ -654,11 +651,9 @@ namespace SudoKill9.EditorTools
 
         private static void ConstruirPanelVictoriaDerrota(Transform parent, TMP_FontAsset font, Sprite buttonSprite, Sprite panelSprite)
         {
-            Transform tScreen = parent.Find("VictoryDefeatScreen");
-            GameObject screenGO = tScreen != null ? tScreen.gameObject : new GameObject("VictoryDefeatScreen");
-            screenGO.transform.SetParent(parent, false);
+            GameObject screenGO = ObtenerOCrearHijo(parent, "VictoryDefeatScreen");
 
-            RectTransform rt = screenGO.GetComponent<RectTransform>() ?? screenGO.AddComponent<RectTransform>();
+            RectTransform rt = screenGO.GetComponent<RectTransform>();
             rt.anchorMin = Vector2.zero;
             rt.anchorMax = Vector2.one;
             rt.sizeDelta = Vector2.zero;
@@ -670,7 +665,7 @@ namespace SudoKill9.EditorTools
 
             // 1. Panel de Victoria
             GameObject vicGO = ObtenerOCrearHijo(screenGO.transform, "VictoryPanel");
-            RectTransform rtVic = vicGO.GetComponent<RectTransform>() ?? vicGO.AddComponent<RectTransform>();
+            RectTransform rtVic = vicGO.GetComponent<RectTransform>();
             rtVic.anchorMin = new Vector2(0.5f, 0.5f);
             rtVic.anchorMax = new Vector2(0.5f, 0.5f);
             rtVic.sizeDelta = new Vector2(680f, 380f);
@@ -701,7 +696,7 @@ namespace SudoKill9.EditorTools
 
             // 2. Panel de Derrota
             GameObject defGO = ObtenerOCrearHijo(screenGO.transform, "DefeatPanel");
-            RectTransform rtDef = defGO.GetComponent<RectTransform>() ?? defGO.AddComponent<RectTransform>();
+            RectTransform rtDef = defGO.GetComponent<RectTransform>();
             rtDef.anchorMin = new Vector2(0.5f, 0.5f);
             rtDef.anchorMax = new Vector2(0.5f, 0.5f);
             rtDef.sizeDelta = new Vector2(680f, 380f);
@@ -752,7 +747,7 @@ namespace SudoKill9.EditorTools
         private static Button CrearBotonTactico(Transform parent, string nombre, string texto, Vector2 pos, TMP_FontAsset font, Sprite btnSprite)
         {
             GameObject btnGO = ObtenerOCrearHijo(parent, nombre);
-            RectTransform rt = btnGO.GetComponent<RectTransform>() ?? btnGO.AddComponent<RectTransform>();
+            RectTransform rt = btnGO.GetComponent<RectTransform>();
             rt.anchoredPosition = pos;
             rt.sizeDelta = new Vector2(250f, 50f);
 
@@ -785,8 +780,15 @@ namespace SudoKill9.EditorTools
         private static GameObject ObtenerOCrearHijo(Transform parent, string nombre)
         {
             Transform t = parent.Find(nombre);
-            if (t != null) return t.gameObject;
-            GameObject go = new GameObject(nombre);
+            if (t != null)
+            {
+                if (t.GetComponent<RectTransform>() != null)
+                {
+                    return t.gameObject;
+                }
+                Object.DestroyImmediate(t.gameObject);
+            }
+            GameObject go = new GameObject(nombre, typeof(RectTransform));
             go.transform.SetParent(parent, false);
             return go;
         }
