@@ -24,7 +24,10 @@ namespace SudoKill9.EditorTools
             EditorApplication.delayCall += () =>
             {
                 if (EditorApplication.isPlayingOrWillChangePlaymode) return;
-                AssetDatabase.ImportAsset("Assets/_Project/Scenes/Experimento_K/prueba_Expe_K.unity", ImportAssetOptions.Default);
+                const string folder = "Assets/_Project/Scenes/Experimento_K";
+                const string path = "Assets/_Project/Scenes/Experimento_K/prueba_Expe_K.unity";
+                AssetDatabase.ImportAsset(folder, ImportAssetOptions.ImportRecursive | ImportAssetOptions.ForceUpdate);
+                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
                 WireLinuxCameraPivotIfOpen(silent: true);
                 WireSceneIfOpen(silent: true);
             };
@@ -131,13 +134,40 @@ namespace SudoKill9.EditorTools
         [MenuItem("Scenes/Abrir Escena Experimento_K (Kevin) %#k", priority = 0)]
         public static void AbrirEscenaExperimentoK()
         {
+            const string folder = "Assets/_Project/Scenes/Experimento_K";
             const string path = "Assets/_Project/Scenes/Experimento_K/prueba_Expe_K.unity";
+            AssetDatabase.ImportAsset(folder, ImportAssetOptions.ImportRecursive | ImportAssetOptions.ForceUpdate);
             AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
             AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
             if (EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
             {
                 EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
                 Debug.Log($"<color=green>[SudoKill9]</color> Escena Experimento_K cargada con éxito: {path}");
+            }
+            var obj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(path);
+            if (obj != null)
+            {
+                EditorUtility.FocusProjectWindow();
+                Selection.activeObject = obj;
+                EditorGUIUtility.PingObject(obj);
+            }
+        }
+
+        [MenuItem("Assets/SudoKill9: Mostrar Escena Experimento_K en Project")]
+        [MenuItem("Tools/SudoKill9/Mostrar Escena en Project Window")]
+        public static void MostrarEscenaEnProject()
+        {
+            const string folder = "Assets/_Project/Scenes/Experimento_K";
+            const string path = "Assets/_Project/Scenes/Experimento_K/prueba_Expe_K.unity";
+            AssetDatabase.ImportAsset(folder, ImportAssetOptions.ImportRecursive | ImportAssetOptions.ForceUpdate);
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+            AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
+            var obj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(path);
+            if (obj != null)
+            {
+                EditorUtility.FocusProjectWindow();
+                Selection.activeObject = obj;
+                EditorGUIUtility.PingObject(obj);
             }
         }
 
