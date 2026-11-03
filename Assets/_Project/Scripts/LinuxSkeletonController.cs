@@ -225,7 +225,7 @@ public class LinuxSkeletonController : MonoBehaviour
         // Prioridad: PlayerAim (legado) → ThirdPersonCameraController → mundo.
         float aimYaw = aim != null ? aim.Yaw
                      : thirdPersonCam != null ? thirdPersonCam.Yaw
-                     : 0f;
+                     : transform.eulerAngles.y;
         Vector3 inputDirection = Quaternion.Euler(0f, aimYaw, 0f) * new Vector3(moveInput.x, 0f, moveInput.y);
         Vector3 targetVel = inputDirection * speed;
 
