@@ -10,7 +10,6 @@ using UnityEngine;
 /// - Ajustar el Zoom / Campo de Visión (FOV) y la sensibilidad del ratón
 /// Se sincroniza en tiempo real con LinuxCombatIK, CameraPivot y MainCamera.
 /// </summary>
-[ExecuteAlways]
 [AddComponentMenu("SudoKill9/Controlador de Cámara del Jugador (Barras)")]
 public class ControladorCamaraJugador : MonoBehaviour
 {
@@ -67,6 +66,16 @@ public class ControladorCamaraJugador : MonoBehaviour
     [Tooltip("Evita que la cámara atraviese paredes u obstáculos detrás del jugador.")]
     public bool evitarColisionesCamara = true;
 
+    [Header("4. Calibración Manual del Cañón (Salida de Balas)")]
+    [Tooltip("Permite ajustar la posición exacta por donde salen las balas respecto a la SCAR-H.")]
+    public bool ajusteManualMuzzle = true;
+
+    [Tooltip("Offset del cañón en metros: X = Frente/Atrás, Y = Arriba/Abajo, Z = Izquierda/Derecha.")]
+    public Vector3 offsetMuzzleManual = new Vector3(0.42f, 0.008f, 0f);
+
+    [Tooltip("Rotación del cañón (por defecto 0, 90, 0 para orientar a lo largo del fusil).")]
+    public Vector3 rotacionMuzzleManual = new Vector3(0f, 90f, 0f);
+
     [Header("Referencia Automática")]
     [Tooltip("Referencia al componente LinuxCombatIK del jugador (se detecta automáticamente).")]
     public LinuxCombatIK sistemaCamaraJugador;
@@ -115,6 +124,9 @@ public class ControladorCamaraJugador : MonoBehaviour
         suavizadoCamara = ik.suavizadoCamara;
         invertirEjeVertical = ik.invertirEjeVertical;
         evitarColisionesCamara = ik.evitarColisionesCamara;
+        ajusteManualMuzzle = ik.ajusteManualMuzzle;
+        offsetMuzzleManual = ik.offsetMuzzleManual;
+        rotacionMuzzleManual = ik.rotacionMuzzleManual;
     }
 
     /// <summary>
@@ -140,8 +152,16 @@ public class ControladorCamaraJugador : MonoBehaviour
         ik.suavizadoCamara = suavizadoCamara;
         ik.invertirEjeVertical = invertirEjeVertical;
         ik.evitarColisionesCamara = evitarColisionesCamara;
+        ik.ajusteManualMuzzle = ajusteManualMuzzle;
+        ik.offsetMuzzleManual = offsetMuzzleManual;
+        ik.rotacionMuzzleManual = rotacionMuzzleManual;
 
         ik.AplicarAjustesCamaraEnTiempoReal();
+        if (ik.muzzlePoint != null && ik.Weapon != null && ik.muzzlePoint.parent == ik.Weapon && ajusteManualMuzzle)
+        {
+            ik.muzzlePoint.localPosition = offsetMuzzleManual;
+            ik.muzzlePoint.localRotation = Quaternion.Euler(rotacionMuzzleManual);
+        }
     }
 
     private void OnValidate()

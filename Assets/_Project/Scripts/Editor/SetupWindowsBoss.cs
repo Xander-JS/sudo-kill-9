@@ -24,8 +24,151 @@ namespace SudoKill9.EditorTools
             EditorApplication.delayCall += () =>
             {
                 if (EditorApplication.isPlayingOrWillChangePlaymode) return;
+                const string folder = "Assets/_Project/Scenes/Experimento_K";
+                const string path = "Assets/_Project/Scenes/Experimento_K/prueba_Expe_K.unity";
+                AssetDatabase.ImportAsset(folder, ImportAssetOptions.ImportRecursive | ImportAssetOptions.ForceUpdate);
+                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
                 WireLinuxCameraPivotIfOpen(silent: true);
+                WireSceneIfOpen(silent: true);
             };
+        }
+
+        [MenuItem("Tools/SudoKill9/Ejecutar Verificación de Combate")]
+        public static void EjecutarVerificacionAutomatica()
+        {
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            sb.AppendLine("=== REPORTE DE VERIFICACIÓN: COMBATE, BALAS, WINDOWS Y VELOCIDAD ===");
+            sb.AppendLine($"Fecha: {System.DateTime.Now}");
+
+            bool exitoTotal = true;
+
+            // 1. Verificar LinuxCombatIK y velocidad reducida
+            var combatIK = Object.FindFirstObjectByType<LinuxCombatIK>();
+            if (combatIK != null)
+            {
+                bool vOk = combatIK.velocidad <= 3.0f && combatIK.velocidad >= 2.0f;
+                sb.AppendLine($"[TEST 1] LinuxCombatIK.velocidad = {combatIK.velocidad} m/s (Caminata lenta/moderada: {(vOk ? "PASS" : "FAIL")})");
+                exitoTotal &= vOk;
+
+                bool combatTestsOk = combatIK.EjecutarPruebasCalidadCombate();
+                sb.AppendLine($"[TEST 2] LinuxCombatIK.EjecutarPruebasCalidadCombate (7-14) = {(combatTestsOk ? "PASS" : "FAIL")}");
+                exitoTotal &= combatTestsOk;
+            }
+            else
+            {
+                sb.AppendLine("[TEST 1-2] LinuxCombatIK no encontrado en la escena actual.");
+            }
+
+            // 2. Verificar Windows GameObject, Colisión y Rigidbody
+            GameObject windowsGO = GameObject.Find("windows");
+            if (windowsGO != null)
+            {
+                CapsuleCollider col = windowsGO.GetComponent<CapsuleCollider>();
+                bool colOk = col != null && !col.isTrigger && col.height > 5f && col.radius > 1f;
+                sb.AppendLine($"[TEST 3] windows.CapsuleCollider presente y calibrado (h={col?.height}, r={col?.radius}, trigger={col?.isTrigger}) = {(colOk ? "PASS" : "FAIL")}");
+                exitoTotal &= colOk;
+
+                Rigidbody rb = windowsGO.GetComponent<Rigidbody>();
+                bool rbOk = rb != null && rb.isKinematic;
+                sb.AppendLine($"[TEST 4] windows.Rigidbody cinemático para impactos sólidos = {(rbOk ? "PASS" : "FAIL")}");
+                exitoTotal &= rbOk;
+
+                WindowsBossAI ai = windowsGO.GetComponent<WindowsBossAI>();
+                bool aiOk = ai != null;
+                sb.AppendLine($"[TEST 5] windows.WindowsBossAI = {(aiOk ? "PASS" : "FAIL")}");
+                exitoTotal &= aiOk;
+
+                // Probar recepción de daño en un dummy aislado para no mutar el boss en la escena
+                GameObject dummyTest = new GameObject("Windows_HealthCheck_Dummy");
+                try
+                {
+                    WindowsBossAI dummyAI = dummyTest.AddComponent<WindowsBossAI>();
+                    dummyAI.GarantizarComponentesFisicos();
+                    float vidaAntes = dummyAI.CurrentHealth;
+                    dummyAI.RecibirDisparo(30f, Vector3.up, Vector3.forward);
+                    bool hitOk = dummyAI.CurrentHealth < vidaAntes;
+                    sb.AppendLine($"[TEST 6] Recepción de Disparo y Daño en WindowsBossAI (Vida: {vidaAntes} -> {dummyAI.CurrentHealth}) = {(hitOk ? "PASS" : "FAIL")}");
+                    exitoTotal &= hitOk;
+                }
+                finally
+                {
+                    Object.DestroyImmediate(dummyTest);
+                }
+
+                if (ai != null && ai.CurrentHealth < 500f)
+                {
+                    ai.RestaurarVida(500f);
+                }
+
+                Animator anim = windowsGO.GetComponent<Animator>();
+                if (anim == null) anim = windowsGO.GetComponentInChildren<Animator>();
+                if (anim != null && anim.runtimeAnimatorController != null)
+                {
+                    bool hasHit = false;
+                    foreach (var p in anim.parameters)
+                    {
+                        if (p.name == "Hit" && p.type == AnimatorControllerParameterType.Trigger) hasHit = true;
+                    }
+                    sb.AppendLine($"[TEST 7] Windows Animator tiene parámetro Trigger 'Hit' = {(hasHit ? "PASS" : "FAIL")}");
+                    exitoTotal &= hasHit;
+                }
+            }
+            else
+            {
+                sb.AppendLine("[TEST 3-7] GameObject 'windows' no encontrado en la escena actual.");
+            }
+
+            sb.AppendLine($"RESULTADO_FINAL={(exitoTotal ? "PASSED" : "FAILED")}");
+
+            try
+            {
+                System.IO.File.WriteAllText("Temp/TestResults_WindowsBossCombat.txt", sb.ToString());
+                Debug.Log($"<color={(exitoTotal ? "green" : "red")}>[SetupWindowsBoss] Verificación automática completada: {(exitoTotal ? "TODOS LOS TESTS PASARON" : "FALLOS DETECTADOS")}</color>");
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[SetupWindowsBoss] Error al escribir reporte: {ex.Message}");
+            }
+        }
+
+        [MenuItem("Scenes/Abrir Escena Experimento_K (Kevin) %#k", priority = 0)]
+        public static void AbrirEscenaExperimentoK()
+        {
+            const string folder = "Assets/_Project/Scenes/Experimento_K";
+            const string path = "Assets/_Project/Scenes/Experimento_K/prueba_Expe_K.unity";
+            AssetDatabase.ImportAsset(folder, ImportAssetOptions.ImportRecursive | ImportAssetOptions.ForceUpdate);
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+            AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
+            if (EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            {
+                EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
+                Debug.Log($"<color=green>[SudoKill9]</color> Escena Experimento_K cargada con éxito: {path}");
+            }
+            var obj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(path);
+            if (obj != null)
+            {
+                EditorUtility.FocusProjectWindow();
+                Selection.activeObject = obj;
+                EditorGUIUtility.PingObject(obj);
+            }
+        }
+
+        [MenuItem("Assets/SudoKill9: Mostrar Escena Experimento_K en Project")]
+        [MenuItem("Tools/SudoKill9/Mostrar Escena en Project Window")]
+        public static void MostrarEscenaEnProject()
+        {
+            const string folder = "Assets/_Project/Scenes/Experimento_K";
+            const string path = "Assets/_Project/Scenes/Experimento_K/prueba_Expe_K.unity";
+            AssetDatabase.ImportAsset(folder, ImportAssetOptions.ImportRecursive | ImportAssetOptions.ForceUpdate);
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+            AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
+            var obj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(path);
+            if (obj != null)
+            {
+                EditorUtility.FocusProjectWindow();
+                Selection.activeObject = obj;
+                EditorGUIUtility.PingObject(obj);
+            }
         }
 
         [MenuItem("Tools/Setup Third-Person Camera Pivot (Linux)")]
@@ -103,7 +246,8 @@ namespace SudoKill9.EditorTools
             AnimationClip tornadoClip      = LoadBossClip(ClipsDir + "/Tornado.fbx", false);
             AnimationClip patadaClip       = LoadBossClip(ClipsDir + "/Patada.fbx", false);
 
-            AnimationClip hitClip          = LoadBossClip(ClipsDir + "/Se_Cae.fbx", false);
+            AnimationClip hitClip          = LoadBossClip(ClipsDir + "/Un_golpe_suave.fbx", false);
+            if (hitClip == null) hitClip   = LoadBossClip(ClipsDir + "/Se_Cae.fbx", false);
             AnimationClip dieClip          = LoadBossClip(ClipsDir + "/Muerte_1.fbx", false);
 
             AnimatorController ctrl = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
@@ -113,9 +257,18 @@ namespace SudoKill9.EditorTools
                 forceRebuild = true;
             }
 
-            // Si ya tiene los 10 estados del diagrama y no se fuerza reconstrucción, salir limpiamente
+            // Si ya tiene los 10 estados del diagrama y no se fuerza reconstrucción, verificar hitClip y salir limpiamente
             if (!forceRebuild && ctrl.layers.Length > 0 && ctrl.layers[0].stateMachine.states.Length == 10)
             {
+                foreach (ChildAnimatorState s in ctrl.layers[0].stateMachine.states)
+                {
+                    if (s.state != null && s.state.name == "Hit" && s.state.motion != hitClip && hitClip != null)
+                    {
+                        s.state.motion = hitClip;
+                        EditorUtility.SetDirty(ctrl);
+                        AssetDatabase.SaveAssets();
+                    }
+                }
                 if (!silent)
                 {
                     Debug.Log("<color=green>[SetupWindowsBoss]</color> ¡WindowsBoss_MasterController verificado según el diagrama!");
@@ -423,6 +576,14 @@ namespace SudoKill9.EditorTools
                 moverProp.boolValue = true;
                 changed = true;
             }
+
+            // Garantizar física y CapsuleCollider para impacto de balas
+            CapsuleCollider bossCol = windowsGO.GetComponent<CapsuleCollider>();
+            if (bossCol == null)
+            {
+                changed = true;
+            }
+            ai.GarantizarComponentesFisicos();
 
             if (changed)
             {

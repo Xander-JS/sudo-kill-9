@@ -386,7 +386,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1366730975766539270}
   - component: {fileID: 8913583596757332419}
-  - component: {fileID: 3960119150738282470}
   m_Layer: 0
   m_Name: Model
   m_TagString: Untagged
@@ -434,37 +433,6 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
---- !u!114 &3960119150738282470
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2689379887916437460}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e62baa2930081884bb31254aff8b9ea2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::WeaponIKHandler
-  profile: {fileID: 11400000, guid: 70d70d254f71b724687235caea3b15c4, type: 2}
-  previewPose: 0
-  forcePose: 0
-  forcedPose: 0
-  leftHandTarget: {fileID: 2435307660133877048}
-  driveTargetFromFields: 1
-  gripLocalPosition: {x: 0.1542209, y: 0.004864674, z: -0.00009275189}
-  gripLocalEuler: {x: 0, y: 0, z: 0}
-  weapon: {fileID: 4555977650208791314}
-  driveWeaponTransform: 1
-  transitionSpeed: 10
-  movingSpeedThreshold: 0.5
-  inputXParam: InputX
-  inputZParam: InputZ
-  isCrouchingParam: IsCrouching
-  jumpStateName: Jump
-  rightHandWeight: 1
-  positionWeight: 1
-  rotationWeight: 1
 --- !u!1 &2697366033078069421
 GameObject:
   m_ObjectHideFlags: 0
@@ -1297,9 +1265,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2659742051941110012}
-  - component: {fileID: 5817575002721123810}
-  - component: {fileID: 941208232528768779}
-  - component: {fileID: 2804653309754983681}
   m_Layer: 0
   m_Name: Player_Linux
   m_TagString: Untagged
@@ -1323,95 +1288,6 @@ Transform:
   - {fileID: 1366730975766539270}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!54 &5817575002721123810
-Rigidbody:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7172952320392726502}
-  serializedVersion: 5
-  m_Mass: 80
-  m_LinearDamping: 0
-  m_AngularDamping: 0.05
-  m_CenterOfMass: {x: 0, y: 0, z: 0}
-  m_InertiaTensor: {x: 1, y: 1, z: 1}
-  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ImplicitCom: 1
-  m_ImplicitTensor: 1
-  m_UseGravity: 0
-  m_IsKinematic: 0
-  m_Interpolate: 1
-  m_Constraints: 112
-  m_CollisionDetection: 1
---- !u!136 &941208232528768779
-CapsuleCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7172952320392726502}
-  m_Material: {fileID: 13400000, guid: a553148b78fb0264b9c5861464a9054c, type: 2}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Radius: 0.4
-  m_Height: 2
-  m_Direction: 1
-  m_Center: {x: 0, y: 1, z: 0}
---- !u!114 &2804653309754983681
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7172952320392726502}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 828ba7a50908d0d49b3ff39931517a1c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::LinuxSkeletonController
-  walkSpeed: 6
-  sprintMultiplier: 1.7
-  crouchMultiplier: 0.4
-  accelSmoothTime: 0.08
-  decelSmoothTime: 0.05
-  airSmoothMultiplier: 2
-  turnSpeed: 12
-  animator: {fileID: 8913583596757332419}
-  inputXParam: InputX
-  inputZParam: InputZ
-  jumpTriggerParam: Jump
-  isCrouchingParam: IsCrouching
-  animInputSmoothTime: 0.1
-  jumpHeight: 1.6
-  riseGravityMultiplier: 2
-  fallGravityMultiplier: 3.5
-  lowJumpMultiplier: 2.5
-  coyoteTime: 0.08
-  jumpBufferTime: 0.1
-  groundMask:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  groundCheckDistance: 0.1
-  maxSlopeAngle: 50
-  showDebug: 0
-  standHeight: 2
-  crouchHeight: 1
 --- !u!1 &7415973972655140230
 GameObject:
   m_ObjectHideFlags: 0

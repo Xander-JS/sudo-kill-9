@@ -79,7 +79,7 @@ public static class SetupHealthUI
 
     private static void EnsureDisplayActivator()
     {
-        if (Object.FindObjectOfType<DisplayActivator>() != null) return;
+        if (Object.FindFirstObjectByType<DisplayActivator>() != null) return;
 
         var go = new GameObject("DisplayActivator");
         Undo.RegisterCreatedObjectUndo(go, "Create DisplayActivator");
@@ -97,7 +97,7 @@ public static class SetupHealthUI
             if (cam != null) return cam;
         }
 
-        foreach (Camera cam in Object.FindObjectsOfType<Camera>())
+        foreach (Camera cam in Object.FindObjectsByType<Camera>(FindObjectsSortMode.None))
         {
             if (cam.targetDisplay == TargetDisplay)
                 return cam;
@@ -261,7 +261,7 @@ public static class SetupHealthUI
 
     private static void EnsureEventSystem()
     {
-        if (Object.FindObjectOfType<EventSystem>() == null)
+        if (Object.FindFirstObjectByType<EventSystem>() == null)
         {
             var esGO = new GameObject("EventSystem");
             Undo.RegisterCreatedObjectUndo(esGO, "Create EventSystem");

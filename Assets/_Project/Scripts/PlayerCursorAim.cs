@@ -35,6 +35,9 @@ public class PlayerCursorAim : MonoBehaviour
     /// <summary>Punto del mundo (a la altura de Linux) hacia el que apunta la mira.</summary>
     public Vector3 AimPoint { get; private set; }
 
+    /// <summary>Ángulo horizontal (Yaw) en grados hacia donde apunta Linux. Usado por IsometricCameraController.</summary>
+    public float Yaw => targetYaw;
+
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
@@ -70,11 +73,8 @@ public class PlayerCursorAim : MonoBehaviour
         targetYaw = Mathf.Atan2(flat.x, flat.z) * Mathf.Rad2Deg;
     }
 
-    private void FixedUpdate()
-    {
-        Quaternion targetRot = Quaternion.Euler(0f, targetYaw, 0f);
-        rb.MoveRotation(Quaternion.Slerp(rb.rotation, targetRot, bodyTurnSpeed * Time.fixedDeltaTime));
-    }
+    // La rotación del cuerpo la maneja LinuxCombatIK usando cursorAim.Yaw.
+    // PlayerCursorAim solo calcula AimPoint y Yaw.
 
     private Camera ResolveCamera()
     {
