@@ -63,10 +63,14 @@ public static class OptimizeTerrainColliderAndFog
         // Quitar MeshCollider
         Undo.DestroyObjectImmediate(mc);
 
-        // Añadir BoxCollider plano (colisión con el suelo, casi gratis)
+        // Añadir BoxCollider plano (colisión con el suelo, casi gratis).
+        // Debe cubrir el mesh real: el Plane de Unity mide 10x10 unidades, no 1x1.
+        MeshFilter mf = terrno.GetComponent<MeshFilter>();
+        Bounds mb = (mf != null && mf.sharedMesh != null) ? mf.sharedMesh.bounds : new Bounds(Vector3.zero, Vector3.one);
+        float thick = 0.02f / Mathf.Abs(terrno.transform.lossyScale.y);
         BoxCollider box = Undo.AddComponent<BoxCollider>(terrno);
-        box.center = Vector3.zero;                     // local center en el plano
-        box.size   = new Vector3(1f, 0.02f / terrno.transform.lossyScale.y, 1f);
+        box.size   = new Vector3(mb.size.x, thick, mb.size.z);
+        box.center = new Vector3(mb.center.x, mb.max.y - thick * 0.5f, mb.center.z); // cara superior = superficie
 
         EditorUtility.SetDirty(terrno);
         Debug.Log($"[Optimize] MeshCollider reemplazado por BoxCollider en '{terrno.name}'. Bounds: {bounds}");
