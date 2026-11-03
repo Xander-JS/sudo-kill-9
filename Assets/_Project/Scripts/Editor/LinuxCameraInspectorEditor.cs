@@ -33,6 +33,29 @@ namespace SudoKill9.EditorTools
         {
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
             EditorApplication.delayCall += EnsureCameraControllersInScene;
+            EditorApplication.update += MonitorizarCursorYEntradaEditor;
+        }
+
+        private static void MonitorizarCursorYEntradaEditor()
+        {
+            if (!EditorApplication.isPlaying && !EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                if (Cursor.lockState != CursorLockMode.None || !Cursor.visible)
+                {
+                    Cursor.lockState = CursorLockMode.None;
+                    Cursor.visible = true;
+                }
+            }
+
+#if ENABLE_INPUT_SYSTEM
+            if (UnityEngine.InputSystem.InputSystem.settings != null &&
+                UnityEngine.InputSystem.InputSystem.settings.editorInputBehaviorInPlayMode !=
+                UnityEngine.InputSystem.InputSettings.EditorInputBehaviorInPlayMode.PointersAndKeyboardsRespectGameViewFocus)
+            {
+                UnityEngine.InputSystem.InputSystem.settings.editorInputBehaviorInPlayMode =
+                    UnityEngine.InputSystem.InputSettings.EditorInputBehaviorInPlayMode.PointersAndKeyboardsRespectGameViewFocus;
+            }
+#endif
         }
 
         public static void EnsureCameraControllersInScene()
@@ -64,24 +87,26 @@ namespace SudoKill9.EditorTools
                 dirty = true;
             }
 
-            // Asegurar que CameraPivot también tenga ControladorCamaraJugador
-            if (ik.pivotCamara != null && ik.pivotCamara.GetComponent<ControladorCamaraJugador>() == null)
+            // Limpiar ControladorCamaraJugador de CameraPivot y MainCamera si existían
+            // para no interferir con la navegación o selección de la cámara en Scene View
+            if (ik.pivotCamara != null)
             {
-                var ctrlPivot = ik.pivotCamara.gameObject.AddComponent<ControladorCamaraJugador>();
-                ctrlPivot.sistemaCamaraJugador = ik;
-                ctrlPivot.VincularYLeerDesdeJugador();
-                EditorUtility.SetDirty(ctrlPivot);
-                dirty = true;
+                var ctrlPivot = ik.pivotCamara.GetComponent<ControladorCamaraJugador>();
+                if (ctrlPivot != null)
+                {
+                    Object.DestroyImmediate(ctrlPivot);
+                    dirty = true;
+                }
             }
 
-            // Asegurar que MainCamera también tenga ControladorCamaraJugador por si el usuario selecciona la cámara
-            if (ik.camaraPrincipal != null && ik.camaraPrincipal.GetComponent<ControladorCamaraJugador>() == null)
+            if (ik.camaraPrincipal != null)
             {
-                var ctrlCam = ik.camaraPrincipal.gameObject.AddComponent<ControladorCamaraJugador>();
-                ctrlCam.sistemaCamaraJugador = ik;
-                ctrlCam.VincularYLeerDesdeJugador();
-                EditorUtility.SetDirty(ctrlCam);
-                dirty = true;
+                var ctrlCam = ik.camaraPrincipal.GetComponent<ControladorCamaraJugador>();
+                if (ctrlCam != null)
+                {
+                    Object.DestroyImmediate(ctrlCam);
+                    dirty = true;
+                }
             }
 
             SincronizarTodosLosControladores(ik);
@@ -159,8 +184,74 @@ namespace SudoKill9.EditorTools
             }
         }
 
+        [MenuItem("Tools/Reparar Navegación y Zoom de Scene View")]
+        public static void RepararNavegacionSceneView()
+        {
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+
+#if ENABLE_INPUT_SYSTEM
+            UnityEngine.InputSystem.InputSystem.settings.editorInputBehaviorInPlayMode =
+                UnityEngine.InputSystem.InputSettings.EditorInputBehaviorInPlayMode.PointersAndKeyboardsRespectGameViewFocus;
+#endif
+
+            Tools.current = Tool.View;
+
+            if (SceneView.sceneViews != null)
+            {
+                foreach (SceneView sv in SceneView.sceneViews)
+                {
+                    if (sv == null) continue;
+                    sv.orthographic = false;
+                    sv.in2DMode = false;
+                    sv.isRotationLocked = false;
+                    sv.Repaint();
+                }
+            }
+
+            SceneView view = SceneView.lastActiveSceneView;
+            if (view == null && SceneView.sceneViews != null && SceneView.sceneViews.Count > 0)
+            {
+                view = SceneView.sceneViews[0] as SceneView;
+            }
+
+            if (view != null)
+            {
+                LinuxCombatIK ik = Object.FindFirstObjectByType<LinuxCombatIK>();
+                if (ik != null)
+                {
+                    view.LookAt(ik.transform.position + Vector3.up * 1.2f, Quaternion.Euler(20f, 0f, 0f), 4.5f);
+                }
+                view.Repaint();
+            }
+
+            EnsureCameraControllersInScene();
+
+            EditorUtility.DisplayDialog(
+                "Navegación de Scene View Restaurada",
+                "Se ha desbloqueado el cursor del ratón, restaurado la recepción de eventos de zoom/paneo " +
+                "y reenfocado la vista de Escena sobre el personaje Linux.\n\n" +
+                "Controles en Scene View:\n" +
+                "• Rueda del ratón: Zoom\n" +
+                "• Clic derecho + WASD: Vuelo / Navegación libre\n" +
+                "• Botón central del ratón: Desplazar pantalla (Pan)\n" +
+                "• Alt + Clic derecho: Zoom suave",
+                "OK");
+        }
+
         private static void OnPlayModeStateChanged(PlayModeStateChange state)
         {
+            if (state == PlayModeStateChange.EnteredEditMode || state == PlayModeStateChange.ExitingPlayMode)
+            {
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+
+#if ENABLE_INPUT_SYSTEM
+                UnityEngine.InputSystem.InputSystem.settings.editorInputBehaviorInPlayMode =
+                    UnityEngine.InputSystem.InputSettings.EditorInputBehaviorInPlayMode.PointersAndKeyboardsRespectGameViewFocus;
+#endif
+            }
+
             if (state == PlayModeStateChange.EnteredEditMode)
             {
                 if (!EditorPrefs.GetBool(KeyPending, false)) return;
@@ -365,6 +456,287 @@ namespace SudoKill9.EditorTools
             EditorGUILayout.EndVertical();
             EditorGUILayout.Space(6);
         }
+
+        /// <summary>
+        /// Dibuja el panel de calibración manual de salida de balas (MuzzlePoint).
+        /// </summary>
+        public static void DibujarPanelCalibracionMuzzle(LinuxCombatIK ik)
+        {
+            if (ik == null) return;
+
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            GUIStyle headerStyle = new GUIStyle(EditorStyles.boldLabel) { fontSize = 12 };
+            EditorGUILayout.LabelField("🎯 CALIBRACIÓN MANUAL: SALIDA DE BALAS (MUZZLE)", headerStyle);
+            EditorGUILayout.HelpBox(
+                "Ajusta manualmente la posición por donde sale la bala respecto al fusil SCAR-H.\n" +
+                "• Mueve los sliders de abajo o arrastra las FLECHAS 3D directamente sobre el cañón en la Escena.\n" +
+                "• En la vista de Escena verás una esfera roja con una flecha amarilla indicando el cañón.",
+                MessageType.Info);
+
+            ik.GarantizarMuzzlePoint();
+
+            EditorGUI.BeginChangeCheck();
+
+            ik.ajusteManualMuzzle = EditorGUILayout.Toggle(
+                new GUIContent("Activar Ajuste Manual", "Conserva tus valores sin que el código los sobreescriba."),
+                ik.ajusteManualMuzzle);
+
+            EditorGUILayout.Space(2);
+            EditorGUILayout.LabelField("Posición del Cañón respecto a la SCAR-H (en metros):", EditorStyles.boldLabel);
+
+            float nuevoX = EditorGUILayout.Slider(
+                new GUIContent("Frente / Atrás (X)", "Avanza o retrocede la boca del cañón a lo largo del fusil."),
+                ik.offsetMuzzleManual.x, -0.2f, 1.2f);
+
+            float nuevoY = EditorGUILayout.Slider(
+                new GUIContent("Arriba / Abajo (Y)", "Sube o baja la boca del cañón respecto al fusil."),
+                ik.offsetMuzzleManual.y, -0.3f, 0.3f);
+
+            float nuevoZ = EditorGUILayout.Slider(
+                new GUIContent("Izquierda / Derecha (Z)", "Desplaza lateralmente la boca del cañón."),
+                ik.offsetMuzzleManual.z, -0.3f, 0.3f);
+
+            Vector3 nuevaRot = EditorGUILayout.Vector3Field("Rotación del Cañón (°)", ik.rotacionMuzzleManual);
+
+            if (EditorGUI.EndChangeCheck())
+            {
+                Undo.RecordObject(ik, "Calibrar Muzzle Manualmente");
+                ik.offsetMuzzleManual = new Vector3(nuevoX, nuevoY, nuevoZ);
+                ik.rotacionMuzzleManual = nuevaRot;
+
+                if (ik.muzzlePoint != null)
+                {
+                    Undo.RecordObject(ik.muzzlePoint, "Mover MuzzlePoint");
+                    ik.muzzlePoint.localPosition = ik.offsetMuzzleManual;
+                    ik.muzzlePoint.localRotation = Quaternion.Euler(ik.rotacionMuzzleManual);
+                    EditorUtility.SetDirty(ik.muzzlePoint);
+                }
+
+                EditorUtility.SetDirty(ik);
+                SceneView.RepaintAll();
+            }
+
+            EditorGUILayout.Space(4);
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("Seleccionar 'MuzzlePoint' (Mover en Escena)"))
+            {
+                if (ik.muzzlePoint != null)
+                {
+                    Selection.activeGameObject = ik.muzzlePoint.gameObject;
+                    EditorGUIUtility.PingObject(ik.muzzlePoint.gameObject);
+                    Tools.current = Tool.Move;
+                }
+            }
+            if (GUILayout.Button("Restablecer Posición Predeterminada"))
+            {
+                Undo.RecordObject(ik, "Restablecer Muzzle");
+                ik.offsetMuzzleManual = new Vector3(0.42f, 0.008f, 0f);
+                ik.rotacionMuzzleManual = new Vector3(0f, 90f, 0f);
+                if (ik.muzzlePoint != null)
+                {
+                    Undo.RecordObject(ik.muzzlePoint, "Restablecer MuzzlePoint");
+                    ik.muzzlePoint.localPosition = ik.offsetMuzzleManual;
+                    ik.muzzlePoint.localRotation = Quaternion.Euler(ik.rotacionMuzzleManual);
+                    EditorUtility.SetDirty(ik.muzzlePoint);
+                }
+                EditorUtility.SetDirty(ik);
+                SceneView.RepaintAll();
+            }
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.EndVertical();
+            EditorGUILayout.Space(4);
+        }
+
+        /// <summary>
+        /// Dibuja el panel de configuración de la Mira / Crosshair (Posición en pantalla, tamaño, colores y láser).
+        /// </summary>
+        public static void DibujarPanelConfiguracionMira(LinuxCombatIK ik)
+        {
+            if (ik == null) return;
+
+            if (ik.crosshairUI == null)
+            {
+                ik.LocalizarCrosshairUI();
+            }
+
+            CrosshairUI ui = ik.crosshairUI;
+
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            GUIStyle headerStyle = new GUIStyle(EditorStyles.boldLabel) { fontSize = 12 };
+            EditorGUILayout.LabelField("🎯 CONFIGURACIÓN DE LA MIRA (CROSSHAIR / APUNTADOR)", headerStyle);
+
+            if (ui == null)
+            {
+                EditorGUILayout.HelpBox(
+                    "No se encontró el componente CrosshairUI en la cámara principal ni en el jugador.\n" +
+                    "Haz clic en el botón de abajo para agregarlo automáticamente a la MainCamera.",
+                    MessageType.Warning);
+
+                if (GUILayout.Button("➕ Agregar CrosshairUI a MainCamera", GUILayout.Height(24)))
+                {
+                    Camera cam = ik.camaraPrincipal != null ? ik.camaraPrincipal.GetComponent<Camera>() : Camera.main;
+                    if (cam != null)
+                    {
+                        ui = cam.gameObject.AddComponent<CrosshairUI>();
+                        ik.crosshairUI = ui;
+                        EditorUtility.SetDirty(cam.gameObject);
+                        EditorUtility.SetDirty(ik);
+                    }
+                }
+                EditorGUILayout.EndVertical();
+                EditorGUILayout.Space(4);
+                return;
+            }
+
+            EditorGUILayout.HelpBox(
+                "Ajusta la posición de la cruz en pantalla, sus dimensiones, colores y guía láser.\n" +
+                "✔ La bala viaja exactamente al punto donde esté situada la cruz en la pantalla.\n" +
+                "✔ El torso y el fusil se orientan automáticamente hacia el objetivo enfocado por la cruz.",
+                MessageType.Info);
+
+            EditorGUI.BeginChangeCheck();
+
+            EditorGUILayout.Space(2);
+            EditorGUILayout.LabelField("1. Posición de la Cruz en Pantalla (Offset):", EditorStyles.boldLabel);
+
+            float nuevoOffX = EditorGUILayout.Slider(
+                new GUIContent("Desplazamiento Horizontal (X)", "0 = Centro exacto, - = izquierda, + = derecha."),
+                ui.offsetPantallaX, -0.45f, 0.45f);
+
+            float nuevoOffY = EditorGUILayout.Slider(
+                new GUIContent("Desplazamiento Vertical (Y)", "0 = Centro exacto, - = abajo, + = arriba."),
+                ui.offsetPantallaY, -0.45f, 0.45f);
+
+            EditorGUILayout.Space(4);
+            EditorGUILayout.LabelField("2. Dimensiones y Estilo de la Cruz:", EditorStyles.boldLabel);
+
+            int nuevoArm = EditorGUILayout.IntSlider(
+                new GUIContent("Longitud de Brazos", "Tamaño de cada una de las 4 líneas de la cruz en píxeles."),
+                ui.armLength, 4, 40);
+
+            int nuevoThick = EditorGUILayout.IntSlider(
+                new GUIContent("Grosor de Líneas", "Grosor en píxeles de los brazos de la cruz."),
+                ui.thickness, 1, 10);
+
+            int nuevoGap = EditorGUILayout.IntSlider(
+                new GUIContent("Separación Central (Gap)", "Distancia entre el centro y el inicio de cada brazo."),
+                ui.gap, 0, 30);
+
+            bool nuevoDot = EditorGUILayout.Toggle(
+                new GUIContent("Mostrar Punto Central", "Muestra un punto preciso en el centro exacto de la mira."),
+                ui.showDot);
+
+            int nuevoDotSize = ui.tamanoPunto;
+            if (nuevoDot)
+            {
+                nuevoDotSize = EditorGUILayout.IntSlider(
+                    new GUIContent("Tamaño del Punto Central", "Diámetro en píxeles del punto central."),
+                    ui.tamanoPunto, 1, 8);
+            }
+
+            EditorGUILayout.Space(4);
+            EditorGUILayout.LabelField("3. Colores y Detección de Objetivos:", EditorStyles.boldLabel);
+
+            Color nuevoColor = EditorGUILayout.ColorField(
+                new GUIContent("Color Normal de la Mira", "Color habitual mientras apuntas."),
+                ui.color);
+
+            Color nuevoColorEnemigo = EditorGUILayout.ColorField(
+                new GUIContent("Color al Enfocar Enemigo", "Color al que cambia la mira cuando apunta a un objetivo o enemigo."),
+                ui.colorAlEnfocarEnemigo);
+
+            bool nuevoRetroceso = EditorGUILayout.Toggle(
+                new GUIContent("Expansión Dinámica (Retroceso)", "La mira se abre sutilmente al disparar simulando el retroceso del arma."),
+                ui.retrocesoDinamico);
+
+            EditorGUILayout.Space(4);
+            EditorGUILayout.LabelField("4. Comportamiento y Guía Láser 3D:", EditorStyles.boldLabel);
+
+            bool nuevoSoloApuntar = EditorGUILayout.Toggle(
+                new GUIContent("Solo al Apuntar (Clic Derecho)", "Si está marcado, la mira solo aparece mientras mantienes presionado clic derecho."),
+                ui.SoloAlApuntar);
+
+            bool nuevoLaser = EditorGUILayout.Toggle(
+                new GUIContent("Activar Guía Láser 3D", "Proyecta un haz láser visible desde la boca del fusil hacia el punto de mira."),
+                ui.activarGuiaLaser);
+
+            Texture2D nuevaTextura = (Texture2D)EditorGUILayout.ObjectField(
+                new GUIContent("Textura / Sprite Personalizado (Opcional)", "Si deseas usar una imagen PNG de mira en lugar de la cruz procedural."),
+                ui.texturaPersonalizada, typeof(Texture2D), false);
+
+            int nuevoTamanoTex = ui.tamanoTextura;
+            if (nuevaTextura != null)
+            {
+                nuevoTamanoTex = EditorGUILayout.IntSlider(
+                    new GUIContent("Tamaño de Textura", "Tamaño en píxeles con el que se dibuja el sprite."),
+                    ui.tamanoTextura, 12, 128);
+            }
+
+            if (EditorGUI.EndChangeCheck())
+            {
+                Undo.RecordObject(ui, "Modificar Ajustes de Mira (CrosshairUI)");
+                ui.offsetPantallaX = nuevoOffX;
+                ui.offsetPantallaY = nuevoOffY;
+                ui.armLength = nuevoArm;
+                ui.thickness = nuevoThick;
+                ui.gap = nuevoGap;
+                ui.showDot = nuevoDot;
+                ui.tamanoPunto = nuevoDotSize;
+                ui.color = nuevoColor;
+                ui.colorAlEnfocarEnemigo = nuevoColorEnemigo;
+                ui.retrocesoDinamico = nuevoRetroceso;
+                ui.SoloAlApuntar = nuevoSoloApuntar;
+                ui.activarGuiaLaser = nuevoLaser;
+                ui.texturaPersonalizada = nuevaTextura;
+                ui.tamanoTextura = nuevoTamanoTex;
+
+                EditorUtility.SetDirty(ui);
+            }
+
+            EditorGUILayout.Space(6);
+            EditorGUILayout.LabelField("Preajustes Rápidos de Mira:", EditorStyles.miniBoldLabel);
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("🎯 Centro (0, 0)"))
+            {
+                Undo.RecordObject(ui, "Centrar Mira");
+                ui.offsetPantallaX = 0f;
+                ui.offsetPantallaY = 0f;
+                EditorUtility.SetDirty(ui);
+            }
+            if (GUILayout.Button("🔴 Guía Láser"))
+            {
+                Undo.RecordObject(ui, "Toggle Guia Laser");
+                ui.activarGuiaLaser = !ui.activarGuiaLaser;
+                EditorUtility.SetDirty(ui);
+            }
+            if (GUILayout.Button("🔄 Restablecer"))
+            {
+                Undo.RecordObject(ui, "Restablecer Mira");
+                ui.offsetPantallaX = 0f;
+                ui.offsetPantallaY = 0f;
+                ui.armLength = 12;
+                ui.thickness = 2;
+                ui.gap = 4;
+                ui.showDot = true;
+                ui.tamanoPunto = 3;
+                ui.color = Color.white;
+                ui.colorAlEnfocarEnemigo = new Color(1f, 0.25f, 0.25f, 1f);
+                ui.retrocesoDinamico = true;
+                ui.SoloAlApuntar = true;
+                EditorUtility.SetDirty(ui);
+            }
+            EditorGUILayout.EndHorizontal();
+
+            if (GUILayout.Button("Seleccionar 'CrosshairUI' en Hierarchy"))
+            {
+                Selection.activeGameObject = ui.gameObject;
+                EditorGUIUtility.PingObject(ui.gameObject);
+            }
+
+            EditorGUILayout.EndVertical();
+            EditorGUILayout.Space(4);
+        }
     }
 
     /// <summary>
@@ -377,24 +749,51 @@ namespace SudoKill9.EditorTools
         {
             ControladorCamaraJugador ctrl = (ControladorCamaraJugador)target;
             LinuxCombatIK ik = ctrl.ObtenerSistemaCamara();
+
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            if (GUILayout.Button("🛠️ REPARAR NAVEGACIÓN Y ZOOM DE SCENE VIEW (Clic si se trabó)", GUILayout.Height(26)))
+            {
+                LinuxCameraPlayModePersistence.RepararNavegacionSceneView();
+            }
+            EditorGUILayout.EndVertical();
+
             LinuxCameraPlayModePersistence.DibujarPanelBarrasCamara(ik);
+            LinuxCameraPlayModePersistence.DibujarPanelCalibracionMuzzle(ik);
+            LinuxCameraPlayModePersistence.DibujarPanelConfiguracionMira(ik);
         }
     }
 
     /// <summary>
-    /// Inspector personalizado para LinuxCombatIK: muestra el panel de barras de cámara arriba del todo
-    /// y conserva intactas todas las propiedades del componente debajo.
+    /// Inspector personalizado para LinuxCombatIK: muestra el panel de barras de cámara arriba del todo,
+    /// el panel de calibración de Muzzle, la configuración de la mira y el visor 3D interactivo en Escena.
     /// </summary>
     [CustomEditor(typeof(LinuxCombatIK))]
     public class LinuxCombatIKEditor : UnityEditor.Editor
     {
-        private bool mostrarPropiedadesAvanzadas = false;
+        private bool mostrarPropiedadesAvanzadas = true;
 
         public override void OnInspectorGUI()
         {
             LinuxCombatIK ik = (LinuxCombatIK)target;
+
+            // 1. Botón superior de rescate para la navegación de Scene View
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            if (GUILayout.Button("🛠️ REPARAR NAVEGACIÓN Y ZOOM DE SCENE VIEW (Clic si se trabó)", GUILayout.Height(26)))
+            {
+                LinuxCameraPlayModePersistence.RepararNavegacionSceneView();
+            }
+            EditorGUILayout.EndVertical();
+
+            // 2. Panel de barras de cámara
             LinuxCameraPlayModePersistence.DibujarPanelBarrasCamara(ik);
 
+            // 3. Panel de calibración del MuzzlePoint (Salida de balas)
+            LinuxCameraPlayModePersistence.DibujarPanelCalibracionMuzzle(ik);
+
+            // 4. Panel de configuración de la Mira / Crosshair
+            LinuxCameraPlayModePersistence.DibujarPanelConfiguracionMira(ik);
+
+            // 5. Propiedades avanzadas desplegadas por defecto
             mostrarPropiedadesAvanzadas = EditorGUILayout.Foldout(
                 mostrarPropiedadesAvanzadas,
                 "Configuración Completa de LinuxCombatIK (Movimiento, IK de Armas y Física)",
@@ -404,6 +803,36 @@ namespace SudoKill9.EditorTools
             {
                 DrawDefaultInspector();
             }
+        }
+
+        private void OnSceneGUI()
+        {
+            LinuxCombatIK ik = (LinuxCombatIK)target;
+            if (ik == null || ik.Weapon == null) return;
+
+            ik.GarantizarMuzzlePoint();
+            if (ik.muzzlePoint == null) return;
+
+            // Dibujar Handle 3D de movimiento directamente sobre la boca del cañón
+            EditorGUI.BeginChangeCheck();
+            Vector3 nuevaPosMundo = Handles.PositionHandle(ik.muzzlePoint.position, ik.muzzlePoint.rotation);
+            if (EditorGUI.EndChangeCheck())
+            {
+                Undo.RecordObject(ik, "Mover MuzzlePoint con Handle de Escena");
+                Undo.RecordObject(ik.muzzlePoint, "Mover MuzzlePoint");
+
+                ik.muzzlePoint.position = nuevaPosMundo;
+                ik.offsetMuzzleManual = ik.muzzlePoint.localPosition;
+                ik.ajusteManualMuzzle = true;
+
+                EditorUtility.SetDirty(ik);
+                EditorUtility.SetDirty(ik.muzzlePoint);
+            }
+
+            // Etiqueta flotante indicadora en la Escena
+            Handles.Label(
+                ik.muzzlePoint.position + Vector3.up * 0.08f,
+                $"🎯 Salida de Bala (Muzzle)\nX: {ik.offsetMuzzleManual.x:F3}, Y: {ik.offsetMuzzleManual.y:F3}, Z: {ik.offsetMuzzleManual.z:F3}");
         }
     }
 
@@ -419,7 +848,6 @@ namespace SudoKill9.EditorTools
             win.minSize = new Vector2(360f, 440f);
             win.Show();
 
-            // También seleccionar automáticamente el objeto en el Inspector para que el usuario lo vea ahí mismo
             SeleccionarJugadorEnInspector();
         }
 
@@ -437,7 +865,17 @@ namespace SudoKill9.EditorTools
         private void OnGUI()
         {
             LinuxCombatIK ik = Object.FindFirstObjectByType<LinuxCombatIK>();
+
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            if (GUILayout.Button("🛠️ REPARAR NAVEGACIÓN Y ZOOM DE SCENE VIEW", GUILayout.Height(24)))
+            {
+                LinuxCameraPlayModePersistence.RepararNavegacionSceneView();
+            }
+            EditorGUILayout.EndVertical();
+
             LinuxCameraPlayModePersistence.DibujarPanelBarrasCamara(ik);
+            LinuxCameraPlayModePersistence.DibujarPanelCalibracionMuzzle(ik);
+            LinuxCameraPlayModePersistence.DibujarPanelConfiguracionMira(ik);
 
             if (ik != null)
             {

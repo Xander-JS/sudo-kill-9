@@ -61,6 +61,24 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
     [SerializeField] private float maxHealth = 500f;
     [SerializeField] private float currentHealth = 500f;
 
+    [Tooltip("Tiempo mínimo en segundos entre reinicios de la animación Hit para evitar tartamudeo con ráfagas continuas.")]
+    [SerializeField] private float intervaloMinimoReaccionGolpe = 0.32f;
+
+    [Tooltip("Si está activo, ataques aéreos o pesados como Salto y Tornado no son interrumpidos en el aire por balas.")]
+    [SerializeField] private bool hiperArmaduraEnAtaquesPesados = true;
+
+    private float ultimoTiempoGolpe = -999f;
+
+    [Header("Colisión y Físicas del Jefe")]
+    [Tooltip("Collider principal de Windows para recibir impactos de bala sin que lo traspasen.")]
+    [SerializeField] private CapsuleCollider bossCollider;
+
+    [Tooltip("Altura deseada en espacio de mundo para el collider del jefe (m).")]
+    [SerializeField] private float alturaMundo = 1.9f;
+
+    [Tooltip("Radio deseado en espacio de mundo para el collider del jefe (m).")]
+    [SerializeField] private float radioMundo = 0.42f;
+
     [Header("Control de Tiempo de Animación (Inspector)")]
     [Tooltip("Tiempo asignado al parámetro. Modifícalo en el Inspector durante Play Mode para pruebas.")]
     [SerializeField] private float tiempoAnimacion = 3f;
@@ -97,6 +115,7 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
     private void Awake()
     {
         currentHealth = maxHealth;
+        GarantizarComponentesFisicos();
         ConfigurarHashesParametros();
         ultimoTiempoInspector = tiempoAnimacion;
         moverHaciaObjetivo = true;
@@ -115,6 +134,7 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
 
     private void Start()
     {
+        GarantizarComponentesFisicos();
         BuscarJugadorSiEsNecesario();
 
         if (animator == null)
@@ -140,6 +160,8 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
 
     private void OnValidate()
     {
+        GarantizarComponentesFisicos();
+
         if (Application.isPlaying && animator != null)
         {
             if (Mathf.Abs(tiempoAnimacion - ultimoTiempoInspector) > 0.001f)
@@ -149,6 +171,39 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
                 ActualizarParametroTiempoEnAnimator();
             }
         }
+    }
+
+    /// <summary>
+    /// Garantiza la presencia de un CapsuleCollider y Rigidbody cinemático calibrados
+    /// para que las balas impacten físicamente y no traspasen a Windows bajo ninguna circunstancia.
+    /// </summary>
+    public void GarantizarComponentesFisicos()
+    {
+        if (bossCollider == null)
+        {
+            bossCollider = GetComponent<CapsuleCollider>();
+            if (bossCollider == null)
+            {
+                bossCollider = gameObject.AddComponent<CapsuleCollider>();
+            }
+        }
+
+        float scaleY = Mathf.Max(0.0001f, Mathf.Abs(transform.lossyScale.y));
+        float scaleXZ = Mathf.Max(0.0001f, (Mathf.Abs(transform.lossyScale.x) + Mathf.Abs(transform.lossyScale.z)) * 0.5f);
+
+        bossCollider.height = alturaMundo / scaleY;
+        bossCollider.radius = radioMundo / scaleXZ;
+        bossCollider.center = new Vector3(0f, (alturaMundo * 0.5f) / scaleY, 0f);
+        bossCollider.isTrigger = false;
+
+        Rigidbody rb = GetComponent<Rigidbody>();
+        if (rb == null)
+        {
+            rb = gameObject.AddComponent<Rigidbody>();
+        }
+        rb.isKinematic = true;
+        rb.useGravity = false;
+        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
     }
 
     private void Update()
@@ -245,6 +300,15 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
         {
             animacionActual = "Patada";
         }
+        else if (IsStateOrTransitioningTo("Hit"))
+        {
+            animacionActual = "Hit";
+            // Pausar traslación mientras se reproduce el retroceso del impacto
+        }
+        else if (IsStateOrTransitioningTo("Die"))
+        {
+            animacionActual = "Die";
+        }
         else
         {
             animacionActual = "Otro";
@@ -305,14 +369,54 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
         }
     }
 
+    /// <summary>
+    /// Invocado directamente por las balas (BalaProyectil) al impactar contra el jefe.
+    /// Aplica el daño y activa la animación reactiva de impacto.
+    /// </summary>
+    public void RecibirDisparo(float dano, Vector3 puntoImpacto, Vector3 direccionBala)
+    {
+        TakeDamage(dano);
+    }
+
+    /// <summary>
+    /// Ejecuta la animación de impacto (Hit / Un_golpe_suave) interrumpiendo fluidamente cualquier acción previa.
+    /// Limpia triggers colgantes para evitar dobles impactos fantasma y respeta el intervalo mínimo para evitar stutter.
+    /// </summary>
     public void RecibirGolpe()
     {
         if (isDead) return;
 
-        if (animator != null && hasHitParam)
+        if (animator != null)
         {
-            animator.SetTrigger(hitTriggerHash);
+            // Limpiar el trigger 'Hit' para que no quede encolado en el Animator y dispare una segunda animación fantasma al salir de Hit
+            if (hasHitParam)
+            {
+                animator.ResetTrigger(hitTriggerHash);
+            }
+
+            // Hiperarmadura en ataques pesados (Salto, Tornado): el jefe absorbe el daño sin cortar bruscamente el ataque
+            if (hiperArmaduraEnAtaquesPesados && (IsStateOrTransitioningTo("Salto") || IsStateOrTransitioningTo("Tornado")))
+            {
+                return;
+            }
+
+            // Si ya está en Hit y la última reacción fue muy reciente, permitimos que el movimiento del retroceso fluya sin resetearlo a frame 0
+            bool yaEnHit = IsStateOrTransitioningTo("Hit");
+            if (!yaEnHit || (Time.time - ultimoTiempoGolpe) >= intervaloMinimoReaccionGolpe)
+            {
+                ultimoTiempoGolpe = Time.time;
+                animator.CrossFadeInFixedTime("Hit", 0.08f, 0, 0f);
+            }
         }
+    }
+
+    /// <summary>
+    /// Restablece la salud del jefe a un valor específico (útil para reinicios y pruebas de verificación sin ensuciar la escena).
+    /// </summary>
+    public void RestaurarVida(float nuevaVida)
+    {
+        currentHealth = Mathf.Max(0f, nuevaVida);
+        isDead = currentHealth <= 0f;
     }
 
     public void Morir()
