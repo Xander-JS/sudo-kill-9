@@ -4,458 +4,323 @@ using UnityEngine.InputSystem;
 #endif
 
 /// <summary>
-/// Sistema Profesional de Cámara en Tercera Persona Over-The-Shoulder (Inspirado en GTA / Tomb Raider / Free Fire).
-/// 
-/// ARQUITECTURA DE TRES NIVELES OBLIGATORIA:
-/// PlayerRoot (Cuerpo del jugador)
-///  └── CameraPivot (Pivote de inclinación vertical - altura de hombros/cabeza)
-///       └── MainCamera (Cámara real desplazada sobre el hombro)
-/// 
-/// SEPARACIÓN MATEMÁTICA DE ROTACIONES:
-/// - Mouse X -> Rota exclusivamente el cuerpo del jugador sobre el eje Y mundial (Yaw).
-/// - Mouse Y -> Inclina exclusivamente el pivote de la cámara sobre su eje X local (Pitch con Clamp estricto).
-/// - MainCamera -> Hereda ambas orientaciones de forma estable y mantiene su desplazamiento lateral (Over-The-Shoulder).
+/// Cámara Over-The-Shoulder estilo GTA / Tomb Raider.
+/// Arquitectura de 3 niveles:
+///   PlayerRoot (este GameObject + CharacterController)
+///   └── CameraPivot  — solo controla Pitch (Mouse Y)
+///       └── MainCamera — offset fijo sobre el hombro, nunca rota sola
+///
+/// Auto-configura CameraPivot y MainCamera si no existen.
+/// Añade este componente al PlayerRoot y ajusta los sliders en el Inspector.
 /// </summary>
-[AddComponentMenu("Cámara/Cámara Tercera Persona (Estilo GTA)")]
+[RequireComponent(typeof(CharacterController))]
 public class ThirdPersonCameraGTA : MonoBehaviour
 {
-    // ========================================================================= //
-    // 1. REFERENCIAS DE JERARQUÍA                                               //
-    // ========================================================================= //
+    // ── Posición y forma de la cámara ──────────────────────────────────
+    [Header("Cámara — Posición")]
+    [Tooltip("Altura del pivote sobre los pies del personaje.")]
+    [Range(0.5f, 3.0f)] public float alturaPivote = 1.35f;
 
-    [Header("1. Jerarquía de la Cámara")]
-    [Tooltip("Transform del personaje principal que rotará horizontalmente con el ratón (por defecto este mismo objeto).")]
-    public Transform targetPlayer;
+    [Tooltip("Distancia de la cámara detrás del personaje.")]
+    [Range(0.5f, 8.0f)] public float distanciaCamara = 2.4f;
 
-    [Tooltip("Transform del pivote a la altura de los hombros/cabeza. Controla únicamente la inclinación vertical.")]
-    public Transform pivotCamara;
+    [Tooltip("Desplazamiento lateral (+ derecha, - izquierda).")]
+    [Range(-2.0f, 2.0f)] public float offsetHombro = 0.55f;
 
-    [Tooltip("Transform de la cámara principal. Mantiene el desplazamiento Over-The-Shoulder.")]
-    public Transform camaraTransform;
+    [Tooltip("Desplazamiento vertical extra de la cámara.")]
+    [Range(-2.0f, 2.0f)] public float offsetVertical = 0f;
 
-    // ========================================================================= //
-    // 2. CONFIGURACIÓN OVER-THE-SHOULDER                                        //
-    // ========================================================================= //
+    [Tooltip("Campo de visión (FOV).")]
+    [Range(30f, 110f)] public float fov = 60f;
 
-    [Header("2. Posición y Composición Over-The-Shoulder")]
-    [Tooltip("Altura del pivote de cámara respecto a los pies del personaje.")]
-    [Range(-1.0f, 3.5f)]
-    public float alturaPivote = 1.35f;
+    // ── Sensibilidad ───────────────────────────────────────────────────
+    [Header("Sensibilidad del Ratón")]
+    [Range(0.5f, 10f)] public float sensibilidadH = 2f;
+    [Range(0.5f, 10f)] public float sensibilidadV = 2f;
+    public bool invertirVertical = false;
 
-    [Tooltip("Ajuste fino vertical de la cámara (subir o bajar la vista respecto al hombro).")]
-    [Range(-2.0f, 2.0f)]
-    public float offsetVerticalCamara = 0.0f;
+    // ── Límites de pitch ───────────────────────────────────────────────
+    [Header("Límites de Inclinación Vertical")]
+    [Range(-85f, 0f)] public float pitchMin = -40f;
+    [Range(0f, 85f)] public float pitchMax = 60f;
 
-    [Tooltip("Distancia de la cámara detrás del personaje (menor = más cerca, mayor = más lejos).")]
-    [Range(0.5f, 8.0f)]
-    public float distanciaCamara = 2.4f;
+    // ── Movimiento ─────────────────────────────────────────────────────
+    [Header("Movimiento del Personaje")]
+    public float velocidad = 6f;
+    public float gravedad = -9.81f;
 
-    [Tooltip("Desplazamiento lateral sobre el hombro (+ derecha tipo GTA, 0 centrado, - izquierda).")]
-    [Range(-2.5f, 2.5f)]
-    public float offsetLateralHombro = 0.55f;
-
-    [Tooltip("Inclinación vertical adicional en grados para la mirada.")]
-    [Range(-45f, 45f)]
-    public float inclinacionVerticalOffset = 0f;
-
-    [Tooltip("Campo de visión (Zoom / FOV) de la cámara (60 = estándar GTA, menor = más zoom).")]
-    [Range(30f, 110f)]
-    public float campoDeVisionFOV = 60f;
-
-    // ========================================================================= //
-    // 3. SENSIBILIDAD Y LÍMITES DEL RATÓN                                       //
-    // ========================================================================= //
-
-    [Header("3. Control del Ratón (Sensibilidad y Límites)")]
-    [Tooltip("Velocidad de giro horizontal del personaje (Mouse X).")]
-    [Range(0.1f, 10f)]
-    public float sensibilidadHorizontal = 2.0f;
-
-    [Tooltip("Velocidad de giro vertical de la cámara (Mouse Y).")]
-    [Range(0.1f, 10f)]
-    public float sensibilidadVertical = 2.0f;
-
-    [Tooltip("Límite inferior para mirar hacia arriba en grados (por ejemplo -40°).")]
-    [Range(-85f, 0f)]
-    public float anguloMinimo = -40f;
-
-    [Tooltip("Límite superior para mirar hacia abajo en grados (por ejemplo 60°).")]
-    [Range(0f, 85f)]
-    public float anguloMaximo = 60f;
-
-    [Tooltip("Tiempo de suavizado angular (0 = respuesta inmediata y nítida).")]
-    [Range(0f, 0.3f)]
-    public float suavizadoCamara = 0f;
-
-    [Tooltip("Si está activo, invierte el eje vertical arriba/abajo del ratón.")]
-    public bool invertirEjeVertical = false;
-
-    // ========================================================================= //
-    // 4. SISTEMA ANTI-COLISIÓN (SPHERECAST)                                     //
-    // ========================================================================= //
-
-    [Header("4. Protección de Colisiones contra Paredes")]
-    [Tooltip("Acerca automáticamente la cámara si hay una pared o geometría detrás del personaje.")]
-    public bool evitarColisiones = true;
-
-    [Tooltip("Radio de la esfera de detección para colisiones de cámara.")]
-    [Range(0.05f, 0.6f)]
-    public float radioColision = 0.2f;
-
-    [Tooltip("Distancia mínima entre el pivote y la cámara cuando hay una pared pegada.")]
-    [Range(0.1f, 1.5f)]
-    public float distanciaMinima = 0.35f;
-
-    [Tooltip("Velocidad con la que la cámara recupera su distancia normal tras despejarse un obstáculo.")]
-    [Range(1f, 30f)]
-    public float velocidadRecuperacion = 15f;
-
-    [Tooltip("Capas físicas con las que colisiona la cámara (debe excluir al jugador).")]
+    // ── Anti-colisión ──────────────────────────────────────────────────
+    [Header("Anti-Colisión (SphereCast)")]
+    public bool antiColision = true;
+    [Range(0.05f, 0.5f)] public float radioSphere = 0.2f;
+    [Tooltip("Distancia mínima de la cámara al pivote cuando hay obstáculo.")]
+    [Range(0.1f, 2f)] public float distanciaMinima = 0.3f;
+    [Tooltip("Velocidad de recuperación al alejarse del obstáculo.")]
+    [Range(1f, 30f)] public float velocidadRecuperacion = 15f;
     public LayerMask capasColision = ~0;
 
-    // ========================================================================= //
-    // 5. CONTROL DEL CURSOR                                                     //
-    // ========================================================================= //
+    // ── Referencias ────────────────────────────────────────────────────
+    private CharacterController cc;
+    private Transform pivotCamara;
+    private Transform mainCamTransform;
+    private Camera cam;
 
-    [Header("5. Estado del Cursor")]
-    [Tooltip("Bloquea y oculta el puntero del ratón automáticamente al iniciar el juego.")]
-    public bool bloquearCursorAlIniciar = true;
+    private float yaw;
+    private float pitch;
+    private float factorDistancia = 1f;
+    private Vector3 velocidadCaida;
 
-    [Tooltip("Tecla para liberar el cursor del ratón (por defecto Escape).")]
-    public KeyCode teclaDesbloquearCursor = KeyCode.Escape;
-
-    // Variables internas de control angular
-    private float yawObjetivo;
-    private float pitchObjetivo;
-    private float yawActual;
-    private float pitchActual;
-    private float velocidadYaw;
-    private float velocidadPitch;
-    private float factorDistanciaActual = 1f;
-    private readonly RaycastHit[] bufferColisiones = new RaycastHit[16];
-    private Collider[] collidersJugador;
+    // ══════════════════════════════════════════════════════════════════ //
+    //  Inicialización                                                   //
+    // ══════════════════════════════════════════════════════════════════ //
 
     private void Awake()
     {
-        if (targetPlayer == null) targetPlayer = transform;
-        GarantizarJerarquiaCamara();
-    }
-
-    private void Start()
-    {
-        InicializarAngulosYReferencias();
-
-        if (bloquearCursorAlIniciar)
-        {
-            BloquearCursor(true);
-        }
+        cc = GetComponent<CharacterController>();
+        ConfigurarJerarquia();
+        yaw = transform.eulerAngles.y;
+        BloquearCursor(true);
     }
 
     /// <summary>
-    /// Crea o localiza automáticamente CameraPivot y MainCamera si no estaban asignados.
+    /// Detecta o crea CameraPivot y MainCamera en la jerarquía.
+    /// No borra nada; si ya existen los reutiliza.
     /// </summary>
-    [ContextMenu("Auto-Configurar Jerarquía de Cámara")]
-    public void GarantizarJerarquiaCamara()
+    private void ConfigurarJerarquia()
     {
-        if (targetPlayer == null) targetPlayer = transform;
-
-        // 1. Localizar o crear CameraPivot
+        // ── CameraPivot ──────────────────────────────────────────────
+        pivotCamara = transform.Find("CameraPivot");
         if (pivotCamara == null)
         {
-            Transform encontrado = targetPlayer.Find("CameraPivot");
-            if (encontrado != null)
+            pivotCamara = new GameObject("CameraPivot").transform;
+            pivotCamara.SetParent(transform, false);
+        }
+        pivotCamara.localPosition = new Vector3(0f, alturaPivote, 0f);
+        pivotCamara.localRotation = Quaternion.identity;
+        pivotCamara.localScale    = Vector3.one;
+
+        // ── MainCamera ───────────────────────────────────────────────
+        Camera camExistente = pivotCamara.GetComponentInChildren<Camera>(true);
+        if (camExistente != null)
+        {
+            mainCamTransform = camExistente.transform;
+        }
+        else
+        {
+            // Reparentar Camera.main si es ajena al personaje
+            Camera cmain = Camera.main;
+            if (cmain != null && !cmain.transform.IsChildOf(transform))
             {
-                pivotCamara = encontrado;
+                AudioListener alViejo = cmain.GetComponent<AudioListener>();
+                if (alViejo != null) alViejo.enabled = false;
+                cmain.transform.SetParent(pivotCamara, false);
+                mainCamTransform = cmain.transform;
+                cmain.gameObject.AddComponent<AudioListener>();
             }
             else
             {
-                GameObject nuevoPivote = new GameObject("CameraPivot");
-                nuevoPivote.transform.SetParent(targetPlayer, false);
-                nuevoPivote.transform.localPosition = new Vector3(0f, alturaPivote, 0f);
-                pivotCamara = nuevoPivote.transform;
+                // Crear MainCamera nueva
+                GameObject go = new GameObject("MainCamera");
+                go.tag = "MainCamera";
+                go.AddComponent<Camera>();
+                go.AddComponent<AudioListener>();
+                mainCamTransform = go.transform;
+                mainCamTransform.SetParent(pivotCamara, false);
             }
         }
 
-        // 2. Localizar o crear MainCamera
-        if (camaraTransform == null && pivotCamara != null)
+        // Desactivar el resto de cámaras en escena para evitar conflictos
+        foreach (Camera c in Camera.allCameras)
         {
-            Camera camEnPivote = pivotCamara.GetComponentInChildren<Camera>();
-            if (camEnPivote != null)
-            {
-                camaraTransform = camEnPivote.transform;
-            }
-            else
-            {
-                Camera camGlobal = Camera.main;
-                if (camGlobal != null)
-                {
-                    camGlobal.transform.SetParent(pivotCamara, false);
-                    camaraTransform = camGlobal.transform;
-                }
-                else
-                {
-                    GameObject nuevaCam = new GameObject("MainCamera");
-                    nuevaCam.tag = "MainCamera";
-                    nuevaCam.transform.SetParent(pivotCamara, false);
-                    Camera camComp = nuevaCam.AddComponent<Camera>();
-                    camComp.fieldOfView = campoDeVisionFOV;
-                    nuevaCam.AddComponent<AudioListener>();
-                    camaraTransform = nuevaCam.transform;
-                }
-            }
+            if (c == null || mainCamTransform == null) continue;
+            if (c.transform == mainCamTransform) continue;
+            AudioListener al = c.GetComponent<AudioListener>();
+            if (al != null) al.enabled = false;
+            c.enabled = false;
         }
 
-        // Cachear colliders del personaje para que la cámara no colisione consigo mismo
-        collidersJugador = targetPlayer.GetComponentsInChildren<Collider>(true);
+        cam = mainCamTransform.GetComponent<Camera>();
+        if (cam != null) cam.fieldOfView = fov;
+
+        AplicarOffsetCamara(1f);
     }
 
-    private void InicializarAngulosYReferencias()
-    {
-        GarantizarJerarquiaCamara();
-
-        yawObjetivo = NormalizarAngulo(targetPlayer.eulerAngles.y);
-        yawActual = yawObjetivo;
-
-        if (pivotCamara != null)
-        {
-            pitchObjetivo = NormalizarAngulo(pivotCamara.localEulerAngles.x);
-            pitchActual = pitchObjetivo;
-        }
-
-        AplicarTransformacionesInmediatas();
-    }
+    // ══════════════════════════════════════════════════════════════════ //
+    //  Update — Input, rotación y movimiento                           //
+    // ══════════════════════════════════════════════════════════════════ //
 
     private void Update()
     {
         GestionarCursor();
-        ActualizarRotacionConMouse();
-    }
-
-    private void LateUpdate()
-    {
-        ActualizarPosicionYSeguimientoCamara();
-    }
-
-    /// <summary>
-    /// Gestiona la captura y liberación del cursor con tecla Escape o clic dentro de pantalla.
-    /// </summary>
-    private void GestionarCursor()
-    {
-        bool escape = Input.GetKeyDown(teclaDesbloquearCursor);
-        bool clic = Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1);
-
-#if ENABLE_INPUT_SYSTEM
-        if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) escape = true;
-        if (Mouse.current != null && (Mouse.current.leftButton.wasPressedThisFrame || Mouse.current.rightButton.wasPressedThisFrame)) clic = true;
-#endif
-
-        if (escape)
-        {
-            BloquearCursor(false);
-        }
-        else if (Cursor.lockState != CursorLockMode.Locked && clic)
-        {
-            BloquearCursor(true);
-        }
-    }
-
-    public void BloquearCursor(bool bloquear)
-    {
-        Cursor.lockState = bloquear ? CursorLockMode.Locked : CursorLockMode.None;
-        Cursor.visible = !bloquear;
-    }
-
-    /// <summary>
-    /// Lee la entrada del ratón y aplica estrictamente la separación:
-    /// - Mouse X -> Eje Y de PlayerRoot (Yaw horizontal).
-    /// - Mouse Y -> Eje X local de CameraPivot (Pitch vertical limitado con Clamp).
-    /// </summary>
-    private void ActualizarRotacionConMouse()
-    {
-        if (pivotCamara == null || targetPlayer == null) return;
-
-        float mouseX = 0f;
-        float mouseY = 0f;
 
         if (Cursor.lockState == CursorLockMode.Locked)
         {
-            mouseX = Input.GetAxis("Mouse X");
-            mouseY = Input.GetAxis("Mouse Y");
+            LeerRaton(out float mouseX, out float mouseY);
 
-#if ENABLE_INPUT_SYSTEM
-            if (Mathf.Abs(mouseX) < 0.0001f && Mathf.Abs(mouseY) < 0.0001f && Mouse.current != null)
-            {
-                Vector2 delta = Mouse.current.delta.ReadValue();
-                mouseX = delta.x * 0.05f;
-                mouseY = delta.y * 0.05f;
-            }
-#endif
+            // Mouse X → Yaw del cuerpo (eje Y mundial de PlayerRoot)
+            yaw += mouseX * sensibilidadH;
+
+            // Mouse Y → Pitch del pivote (eje X local de CameraPivot)
+            float sentido = invertirVertical ? 1f : -1f;
+            pitch += mouseY * sensibilidadV * sentido;
+            pitch  = Mathf.Clamp(pitch, pitchMin, pitchMax);
         }
 
-        // 1. Acumulación horizontal en PlayerRoot
-        yawObjetivo = NormalizarAngulo(yawObjetivo + mouseX * sensibilidadHorizontal);
+        // Aplicar rotaciones — separación estricta de ejes
+        transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+        if (pivotCamara != null)
+            pivotCamara.localRotation = Quaternion.Euler(pitch, 0f, 0f);
 
-        // 2. Acumulación vertical en CameraPivot
-        float factorInversion = invertirEjeVertical ? 1f : -1f;
-        pitchObjetivo += mouseY * sensibilidadVertical * factorInversion;
-        pitchObjetivo = Mathf.Clamp(pitchObjetivo, anguloMinimo, anguloMaximo);
-
-        // 3. Suavizado angular opcional
-        if (suavizadoCamara > 0.0001f)
-        {
-            yawActual = NormalizarAngulo(Mathf.SmoothDampAngle(yawActual, yawObjetivo, ref velocidadYaw, suavizadoCamara));
-            pitchActual = Mathf.SmoothDampAngle(pitchActual, pitchObjetivo, ref velocidadPitch, suavizadoCamara);
-            pitchActual = Mathf.Clamp(pitchActual, anguloMinimo, anguloMaximo);
-        }
-        else
-        {
-            yawActual = yawObjetivo;
-            pitchActual = pitchObjetivo;
-        }
-
-        // Aplicar rotaciones
-        targetPlayer.rotation = Quaternion.Euler(0f, yawActual, 0f);
-        float pitchFinal = Mathf.Clamp(pitchActual + inclinacionVerticalOffset, anguloMinimo, anguloMaximo);
-        pivotCamara.localRotation = Quaternion.Euler(pitchFinal, 0f, 0f);
+        ActualizarMovimiento();
     }
 
-    /// <summary>
-    /// Posiciona la cámara con desplazamiento Over-The-Shoulder y resuelve colisiones contra paredes.
-    /// Se ejecuta en LateUpdate para garantizar cero vibración o temblor con el movimiento del personaje.
-    /// </summary>
-    private void ActualizarPosicionYSeguimientoCamara()
-    {
-        if (pivotCamara == null || camaraTransform == null) return;
+    // ══════════════════════════════════════════════════════════════════ //
+    //  LateUpdate — Posicionamiento de cámara y anti-colisión          //
+    // ══════════════════════════════════════════════════════════════════ //
 
-        // Mantener el pivote en la altura exacta
+    private void LateUpdate()
+    {
+        if (pivotCamara == null || mainCamTransform == null) return;
+
+        // Fijar posición del pivote (puede haberse movido por física de padres)
         pivotCamara.localPosition = new Vector3(0f, alturaPivote, 0f);
 
-        Vector3 offsetDeseado = new Vector3(offsetLateralHombro, offsetVerticalCamara, -Mathf.Abs(distanciaCamara));
         float factorObjetivo = 1f;
 
-        // Detección de colisiones mediante SphereCast
-        if (evitarColisiones)
+        if (antiColision)
         {
-            Vector3 origenPivote = pivotCamara.position;
-            Vector3 destinoMundo = pivotCamara.TransformPoint(offsetDeseado);
-            Vector3 vectorHaciaCamara = destinoMundo - origenPivote;
-            float distanciaTotal = vectorHaciaCamara.magnitude;
+            Vector3 origen  = pivotCamara.position;
+            Vector3 destino = pivotCamara.TransformPoint(
+                new Vector3(offsetHombro, offsetVertical, -distanciaCamara));
+            Vector3 dir  = destino - origen;
+            float   dist = dir.magnitude;
 
-            if (distanciaTotal > 0.001f)
+            if (dist > 0.001f)
             {
-                Vector3 dir = vectorHaciaCamara / distanciaTotal;
-                int impactos = Physics.SphereCastNonAlloc(
-                    origenPivote,
-                    radioColision,
-                    dir,
-                    bufferColisiones,
-                    distanciaTotal,
-                    capasColision,
-                    QueryTriggerInteraction.Ignore
-                );
-
-                float menorDistancia = distanciaTotal;
-                bool hayObstaculo = false;
-
-                for (int i = 0; i < impactos; i++)
+                if (Physics.SphereCast(origen, radioSphere, dir / dist, out RaycastHit hit,
+                        dist, capasColision, QueryTriggerInteraction.Ignore)
+                    && !hit.collider.transform.IsChildOf(transform))
                 {
-                    Collider col = bufferColisiones[i].collider;
-                    if (col == null) continue;
-
-                    // Ignorar el propio personaje y sus hijos
-                    if (EsColliderDelJugador(col)) continue;
-
-                    // Ignorar el suelo horizontal bajo los pies si la cámara está baja
-                    if (bufferColisiones[i].normal.y > 0.75f && bufferColisiones[i].point.y <= targetPlayer.position.y + 0.15f)
-                        continue;
-
-                    if (bufferColisiones[i].distance < menorDistancia)
-                    {
-                        menorDistancia = bufferColisiones[i].distance;
-                        hayObstaculo = true;
-                    }
-                }
-
-                if (hayObstaculo)
-                {
-                    float limiteMinimo = Mathf.Min(distanciaMinima, distanciaTotal);
-                    float distanciaSegura = Mathf.Clamp(menorDistancia - 0.05f, limiteMinimo, distanciaTotal);
-                    factorObjetivo = Mathf.Clamp01(distanciaSegura / distanciaTotal);
+                    float segura = Mathf.Clamp(hit.distance - 0.05f, distanciaMinima, dist);
+                    factorObjetivo = Mathf.Clamp01(segura / dist);
                 }
             }
         }
 
-        // Transición suave de colisión
-        if (factorObjetivo < factorDistanciaActual)
-        {
-            factorDistanciaActual = factorObjetivo; // Acercar de inmediato si hay colisión
-        }
+        // Acercar instantáneo al chocar, alejar suave al despejarse
+        if (factorObjetivo < factorDistancia)
+            factorDistancia = factorObjetivo;
         else
-        {
-            factorDistanciaActual = Mathf.Lerp(
-                factorDistanciaActual,
-                factorObjetivo,
-                1f - Mathf.Exp(-velocidadRecuperacion * Time.deltaTime)
-            );
-        }
+            factorDistancia = Mathf.Lerp(
+                factorDistancia, factorObjetivo,
+                1f - Mathf.Exp(-velocidadRecuperacion * Time.deltaTime));
 
-        // Posicionar cámara respetando siempre el hombro y la altura
-        camaraTransform.localPosition = new Vector3(
-            offsetLateralHombro * factorDistanciaActual,
-            offsetVerticalCamara,
-            -Mathf.Abs(distanciaCamara) * factorDistanciaActual
-        );
-        camaraTransform.localRotation = Quaternion.identity;
-
-        // Actualizar FOV
-        Camera camComp = camaraTransform.GetComponent<Camera>();
-        if (camComp != null && !Mathf.Approximately(camComp.fieldOfView, campoDeVisionFOV))
-        {
-            camComp.fieldOfView = campoDeVisionFOV;
-        }
+        AplicarOffsetCamara(factorDistancia);
     }
 
-    private bool EsColliderDelJugador(Collider col)
+    // ══════════════════════════════════════════════════════════════════ //
+    //  Helpers                                                          //
+    // ══════════════════════════════════════════════════════════════════ //
+
+    private void AplicarOffsetCamara(float factor)
     {
-        if (col == null || targetPlayer == null) return false;
-        if (col.transform == targetPlayer || col.transform.IsChildOf(targetPlayer) || col.transform.root == targetPlayer.root)
-            return true;
-        return false;
+        if (mainCamTransform == null) return;
+        mainCamTransform.localPosition =
+            new Vector3(offsetHombro * factor, offsetVertical, -distanciaCamara * factor);
+        mainCamTransform.localRotation = Quaternion.identity; // nunca rota sola
     }
 
-    private void AplicarTransformacionesInmediatas()
+    private void ActualizarMovimiento()
     {
-        if (targetPlayer != null)
+        float h = 0f, v = 0f;
+
+#if ENABLE_INPUT_SYSTEM
+        if (Keyboard.current != null)
         {
-            targetPlayer.rotation = Quaternion.Euler(0f, yawActual, 0f);
+            h = (Keyboard.current.dKey.isPressed     ? 1f : 0f)
+              - (Keyboard.current.aKey.isPressed     ? 1f : 0f);
+            v = (Keyboard.current.wKey.isPressed     ? 1f : 0f)
+              - (Keyboard.current.sKey.isPressed     ? 1f : 0f);
         }
-        if (pivotCamara != null)
+        // Fallback al Input Manager clásico
+        if (Mathf.Abs(h) < 0.001f && Mathf.Abs(v) < 0.001f)
         {
-            pivotCamara.localPosition = new Vector3(0f, alturaPivote, 0f);
-            float pitchFinal = Mathf.Clamp(pitchActual + inclinacionVerticalOffset, anguloMinimo, anguloMaximo);
-            pivotCamara.localRotation = Quaternion.Euler(pitchFinal, 0f, 0f);
+            h = Input.GetAxis("Horizontal");
+            v = Input.GetAxis("Vertical");
         }
-        if (camaraTransform != null)
-        {
-            camaraTransform.localPosition = new Vector3(offsetLateralHombro, offsetVerticalCamara, -Mathf.Abs(distanciaCamara));
-            camaraTransform.localRotation = Quaternion.identity;
-        }
+#else
+        h = Input.GetAxis("Horizontal");
+        v = Input.GetAxis("Vertical");
+#endif
+
+        // Proyectar forward y right sobre el plano XZ para que mirar arriba/abajo
+        // no haga flotar ni hundir al personaje.
+        Vector3 fwd = Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
+        Vector3 rgt = Vector3.ProjectOnPlane(transform.right,   Vector3.up).normalized;
+        Vector3 dir = fwd * v + rgt * h;
+        if (dir.sqrMagnitude > 1f) dir.Normalize();
+
+        // Gravedad acumulativa
+        if (cc.isGrounded && velocidadCaida.y < 0f)
+            velocidadCaida.y = -2f;
+        else
+            velocidadCaida.y += gravedad * Time.deltaTime;
+
+        cc.Move((dir * velocidad + velocidadCaida) * Time.deltaTime);
     }
 
-    private static float NormalizarAngulo(float angulo)
+    private void LeerRaton(out float mouseX, out float mouseY)
     {
-        angulo %= 360f;
-        if (angulo > 180f) angulo -= 360f;
-        if (angulo < -180f) angulo += 360f;
-        return angulo;
+        mouseX = 0f;
+        mouseY = 0f;
+
+#if ENABLE_INPUT_SYSTEM
+        if (Mouse.current != null)
+        {
+            Vector2 delta = Mouse.current.delta.ReadValue() * 0.05f;
+            mouseX = delta.x;
+            mouseY = delta.y;
+        }
+        if (Mathf.Abs(mouseX) < 0.0001f && Mathf.Abs(mouseY) < 0.0001f)
+        {
+            mouseX = Input.GetAxis("Mouse X");
+            mouseY = Input.GetAxis("Mouse Y");
+        }
+#else
+        mouseX = Input.GetAxis("Mouse X");
+        mouseY = Input.GetAxis("Mouse Y");
+#endif
     }
 
+    private void GestionarCursor()
+    {
+        bool escape = Input.GetKeyDown(KeyCode.Escape);
+        bool clic   = Input.GetMouseButtonDown(0);
+
+#if ENABLE_INPUT_SYSTEM
+        if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) escape = true;
+        if (Mouse.current  != null && Mouse.current.leftButton.wasPressedThisFrame)    clic   = true;
+#endif
+
+        if (escape)
+            BloquearCursor(false);
+        else if (Cursor.lockState != CursorLockMode.Locked && clic)
+            BloquearCursor(true);
+    }
+
+    private void BloquearCursor(bool bloquear)
+    {
+        Cursor.lockState = bloquear ? CursorLockMode.Locked : CursorLockMode.None;
+        Cursor.visible   = !bloquear;
+    }
+
+#if UNITY_EDITOR
     private void OnValidate()
     {
-        if (anguloMinimo > anguloMaximo) anguloMinimo = anguloMaximo;
-        if (Application.isPlaying)
-        {
-            AplicarTransformacionesInmediatas();
-        }
+        if (!Application.isPlaying) return;
+        if (pivotCamara      != null) pivotCamara.localPosition = new Vector3(0f, alturaPivote, 0f);
+        if (cam              != null) cam.fieldOfView = fov;
+        AplicarOffsetCamara(factorDistancia);
     }
+#endif
 }
