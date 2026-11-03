@@ -1965,6 +1965,18 @@ public class LinuxCombatIK : MonoBehaviour, IDamageable
             animator.SetIKRotationWeight(AvatarIKGoal.RightFoot, 0f);
         }
 
+        // When the shooting animation is driving the upper body, its retargeting already
+        // positions the hands. Applying our idle-calibrated IK offsets on top would
+        // double-displace the weapon, so we skip hand IK entirely in that case.
+        if (enEstadoDisparo)
+        {
+            animator.SetIKPositionWeight(AvatarIKGoal.RightHand, 0f);
+            animator.SetIKRotationWeight(AvatarIKGoal.RightHand, 0f);
+            animator.SetIKPositionWeight(AvatarIKGoal.LeftHand, 0f);
+            animator.SetIKRotationWeight(AvatarIKGoal.LeftHand, 0f);
+            return;
+        }
+
         Vector3 reach = OffsetToWorld(currentHandOffset);
 
         // Mano derecha: desplaza el hueso hacia adelante manteniendo orientación
