@@ -288,7 +288,6 @@ public class BalaProyectil : MonoBehaviour
 
         var main = ps.main;
         main.playOnAwake = false;
-        main.duration = 0.2f;
         main.loop = false;
         main.startLifetime = 0.18f;
         main.startSpeed = 4.5f;
@@ -297,6 +296,7 @@ public class BalaProyectil : MonoBehaviour
         main.stopAction = ParticleSystemStopAction.Destroy;
 
         var emission = ps.emission;
+        emission.rateOverTime = 0;
         emission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 10) });
 
         var shape = ps.shape;
