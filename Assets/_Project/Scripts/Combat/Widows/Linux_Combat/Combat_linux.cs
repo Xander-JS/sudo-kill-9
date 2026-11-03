@@ -214,6 +214,8 @@ public class LinuxCombatIK : MonoBehaviour
     // Variables privadas de combate y disparo
     private int armaActivaHash;
     private bool hasArmaActivaParam;
+    private int disparandoQuietoHash;
+    private bool hasDisparandoQuietoParam;
     private bool estaApuntando = false;
     private float tiempoProximoDisparo = 0f;
     private float temporizadorGuardarArma = 0f;
@@ -294,6 +296,7 @@ public class LinuxCombatIK : MonoBehaviour
     private void Awake()
     {
         animator = GetComponent<Animator>();
+        if (animator != null) animator.applyRootMotion = false;
         body = GetComponentInParent<Rigidbody>();
 
         // 1. Configurar CharacterController y resolver conflictos con contenedores padres (Player_LinuxSkeleton)
@@ -310,6 +313,7 @@ public class LinuxCombatIK : MonoBehaviour
         inputZHash = Animator.StringToHash(inputZParam);
         crouchHash = Animator.StringToHash(isCrouchingParam);
         armaActivaHash = Animator.StringToHash(armaActivaParam);
+        disparandoQuietoHash = Animator.StringToHash("DisparandoQuieto");
         bool hasX = false, hasZ = false;
         if (animator != null)
         {
@@ -319,6 +323,7 @@ public class LinuxCombatIK : MonoBehaviour
                 if (p.nameHash == inputZHash && p.type == AnimatorControllerParameterType.Float) hasZ = true;
                 if (p.nameHash == crouchHash && p.type == AnimatorControllerParameterType.Bool) hasCrouchParam = true;
                 if (p.nameHash == armaActivaHash && p.type == AnimatorControllerParameterType.Bool) hasArmaActivaParam = true;
+                if (p.nameHash == disparandoQuietoHash && p.type == AnimatorControllerParameterType.Bool) hasDisparandoQuietoParam = true;
             }
         }
         hasInputParams = hasX && hasZ;
@@ -462,9 +467,10 @@ public class LinuxCombatIK : MonoBehaviour
             Rigidbody parentRb = parent.GetComponent<Rigidbody>();
             if (parentRb != null)
             {
+                if (!parentRb.isKinematic)
+                    parentRb.linearVelocity = Vector3.zero;
                 parentRb.isKinematic = true;
                 parentRb.useGravity = false;
-                parentRb.linearVelocity = Vector3.zero;
             }
 
             Collider[] parentColliders = parent.GetComponents<Collider>();
@@ -1200,6 +1206,31 @@ public class LinuxCombatIK : MonoBehaviour
             temporizadorGuardarArma = tiempoParaGuardarArma;
         }
 
+        // Determinar si debe usarse la animación Firing Rifle Quiet:
+        // - Cuando se apunta con clic derecho (sin importar el movimiento)
+        // - Cuando se dispara sin presionar WASD
+        // - Cuando el arma está activa pero el jugador está quieto (sin WASD)
+        float movInputMag = Mathf.Abs(Input.GetAxis("Horizontal")) + Mathf.Abs(Input.GetAxis("Vertical"));
+#if ENABLE_INPUT_SYSTEM
+        if (Keyboard.current != null)
+        {
+            Keyboard kb = Keyboard.current;
+            float kbH = (kb.dKey.isPressed || kb.rightArrowKey.isPressed ? 1f : 0f) -
+                        (kb.aKey.isPressed || kb.leftArrowKey.isPressed ? 1f : 0f);
+            float kbV = (kb.wKey.isPressed || kb.upArrowKey.isPressed ? 1f : 0f) -
+                        (kb.sKey.isPressed || kb.downArrowKey.isPressed ? 1f : 0f);
+            float kbMag = Mathf.Abs(kbH) + Mathf.Abs(kbV);
+            if (kbMag > movInputMag) movInputMag = kbMag;
+        }
+#endif
+        bool estaMoviendose = movInputMag > 0.1f;
+        // Firing_Rifle_Quiet cuando: apunta (click derecho), o dispara quieto, o tiene arma activa y no se mueve
+        bool dispaRandomQuieto = armaActiva && (estaApuntando || !estaMoviendose);
+        if (hasDisparandoQuietoParam && animator != null)
+        {
+            animator.SetBool(disparandoQuietoHash, dispaRandomQuieto);
+        }
+
         // 2. Disparo con Clic Izquierdo (lanza bala física desde la punta del arma hacia el centro de la mira)
         if (clicIzquierdoPresionado || (clicIzquierdoMantenido && Time.time >= tiempoProximoDisparo))
         {
@@ -1261,6 +1292,10 @@ public class LinuxCombatIK : MonoBehaviour
             if (crosshairUI != null)
             {
                 crosshairUI.EstaApuntando = false;
+            }
+            if (hasDisparandoQuietoParam && animator != null)
+            {
+                animator.SetBool(disparandoQuietoHash, false);
             }
         }
     }
@@ -1780,6 +1815,21 @@ public class LinuxCombatIK : MonoBehaviour
             }
         }
 
+        // 2. Foot IK: anclar los pies al suelo cuando se usa Firing_Rifle_Quiet para evitar hundimiento visual
+        bool enEstadoDisparo = hasDisparandoQuietoParam && animator != null && animator.GetBool(disparandoQuietoHash);
+        if (enEstadoDisparo && animator != null && animator.isHuman)
+        {
+            AplicarFootIK(AvatarIKGoal.LeftFoot, HumanBodyBones.LeftFoot);
+            AplicarFootIK(AvatarIKGoal.RightFoot, HumanBodyBones.RightFoot);
+        }
+        else if (animator != null)
+        {
+            animator.SetIKPositionWeight(AvatarIKGoal.LeftFoot, 0f);
+            animator.SetIKRotationWeight(AvatarIKGoal.LeftFoot, 0f);
+            animator.SetIKPositionWeight(AvatarIKGoal.RightFoot, 0f);
+            animator.SetIKRotationWeight(AvatarIKGoal.RightFoot, 0f);
+        }
+
         Vector3 reach = OffsetToWorld(currentHandOffset);
 
         // Mano derecha: desplaza el hueso hacia adelante manteniendo orientación
@@ -1804,6 +1854,40 @@ public class LinuxCombatIK : MonoBehaviour
         animator.SetIKRotationWeight(AvatarIKGoal.LeftHand, rotationWeight);
         animator.SetIKPosition(AvatarIKGoal.LeftHand, leftHandTarget.position + reach);
         animator.SetIKRotation(AvatarIKGoal.LeftHand, leftHandTarget.rotation);
+    }
+
+    private void AplicarFootIK(AvatarIKGoal goal, HumanBodyBones footBone)
+    {
+        Transform foot = animator.GetBoneTransform(footBone);
+        if (foot == null)
+        {
+            animator.SetIKPositionWeight(goal, 0f);
+            animator.SetIKRotationWeight(goal, 0f);
+            return;
+        }
+
+        // Raycast desde arriba del pie hacia el suelo
+        Vector3 origen = foot.position + Vector3.up * 0.5f;
+        if (Physics.Raycast(origen, Vector3.down, out RaycastHit hit, 1.2f, ~0, QueryTriggerInteraction.Ignore))
+        {
+            // Ignorar colisiones con el propio personaje
+            if (!hit.collider.transform.IsChildOf(transform) && hit.collider != controlador)
+            {
+                animator.SetIKPositionWeight(goal, 1f);
+                animator.SetIKRotationWeight(goal, 0.5f);
+                animator.SetIKPosition(goal, hit.point);
+                // Rotar el pie según la normal del suelo
+                Quaternion footRot = Quaternion.LookRotation(
+                    Vector3.ProjectOnPlane(foot.forward, hit.normal),
+                    hit.normal
+                );
+                animator.SetIKRotation(goal, footRot);
+                return;
+            }
+        }
+
+        animator.SetIKPositionWeight(goal, 0f);
+        animator.SetIKRotationWeight(goal, 0f);
     }
 
     public float YawActual => yawActual;
