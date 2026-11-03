@@ -26,10 +26,10 @@ namespace SudoKill9.EditorTools
                 if (EditorApplication.isPlayingOrWillChangePlaymode) return;
                 WireLinuxCameraPivotIfOpen(silent: true);
                 WireSceneIfOpen(silent: true);
-                EjecutarVerificacionAutomatica();
             };
         }
 
+        [MenuItem("Tools/SudoKill9/Ejecutar Verificación de Combate")]
         public static void EjecutarVerificacionAutomatica()
         {
             System.Text.StringBuilder sb = new System.Text.StringBuilder();

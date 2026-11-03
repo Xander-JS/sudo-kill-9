@@ -2002,6 +2002,7 @@ public class LinuxCombatIK : MonoBehaviour
         float vidaInicial = bossAI.CurrentHealth;
         Vector3 posBoss = spawnPos + transform.forward * 2f;
         windowsDummy.transform.position = posBoss;
+        Physics.SyncTransforms();
 
         // A) Probar barrido volumétrico continuo (SphereCast)
         bool sweepOk = Physics.SphereCast(spawnPos, 0.05f, transform.forward, out RaycastHit hitBoss, 4f, capasDisparo.value, QueryTriggerInteraction.Collide);

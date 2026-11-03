@@ -7,7 +7,7 @@ public class PlayerMovement : MonoBehaviour
     private PlayerCursorAim cursorAim;
     private IsometricCameraController isoCam;
 
-    public Transform camera;
+    public new Transform camera;
 
     public float speed = 4f;
     public float runSpeed = 7f;
