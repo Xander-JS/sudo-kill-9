@@ -67,6 +67,18 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
     [Tooltip("Si está activo, ataques aéreos o pesados como Salto y Tornado no son interrumpidos en el aire por balas.")]
     [SerializeField] private bool hiperArmaduraEnAtaquesPesados = true;
 
+    [Header("Fases de Combate y Ataques Especiales")]
+    [Tooltip("Fase actual del jefe: 1 (100-70%), 2 (70-35%), 3 (<35% Enrage).")]
+    [SerializeField] private int faseActual = 1;
+
+    [Tooltip("Referencia opcional a WindowsCommandAttacks para coordinar ataques y estados especiales.")]
+    [SerializeField] private WindowsCommandAttacks commandAttacks;
+
+    // Eventos estáticos de salud, fase y muerte del jefe para la UI
+    public static event System.Action<float, float> OnBossHealthChanged;
+    public static event System.Action<int> OnBossPhaseChanged;
+    public static event System.Action OnBossDied;
+
     private float ultimoTiempoGolpe = -999f;
 
     [Header("Colisión y Físicas del Jefe")]
@@ -111,6 +123,7 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
 
     private float ultimoTiempoInspector;
     private bool isDead = false;
+    private bool golpeAplicadoEnCiclo = false;
 
     private void Awake()
     {
@@ -119,6 +132,13 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
         ConfigurarHashesParametros();
         ultimoTiempoInspector = tiempoAnimacion;
         moverHaciaObjetivo = true;
+
+        if (commandAttacks == null)
+        {
+            commandAttacks = GetComponent<WindowsCommandAttacks>();
+            if (commandAttacks == null) commandAttacks = gameObject.AddComponent<WindowsCommandAttacks>();
+        }
+        ActualizarFaseActual(false);
 
         if (animator == null)
         {
@@ -136,6 +156,15 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
     {
         GarantizarComponentesFisicos();
         BuscarJugadorSiEsNecesario();
+
+        if (commandAttacks == null)
+        {
+            commandAttacks = GetComponent<WindowsCommandAttacks>();
+            if (commandAttacks == null) commandAttacks = gameObject.AddComponent<WindowsCommandAttacks>();
+        }
+        ActualizarFaseActual(false);
+        OnBossHealthChanged?.Invoke(currentHealth, maxHealth);
+        OnBossPhaseChanged?.Invoke(faseActual);
 
         if (animator == null)
         {
@@ -246,6 +275,7 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
     private void RotarHaciaJugador()
     {
         if (target == null) return;
+        if (commandAttacks != null && commandAttacks.EstaEjecutandoAtaqueEspecial) return;
 
         if (currentDistanceToTarget > minDistanceToRotate)
         {
@@ -263,19 +293,23 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
     private void GestionarMovimientoSegunAnimacion()
     {
         if (!moverHaciaObjetivo || animator == null) return;
+        if (commandAttacks != null && commandAttacks.EstaEjecutandoAtaqueEspecial) return;
 
         if (IsStateOrTransitioningTo("Camina"))
         {
+            golpeAplicadoEnCiclo = false;
             animacionActual = "Camina";
             MoverHaciaJugador(walkSpeed);
         }
         else if (IsStateOrTransitioningTo("Trota"))
         {
+            golpeAplicadoEnCiclo = false;
             animacionActual = "Trota";
             MoverHaciaJugador(trotSpeed);
         }
         else if (IsStateOrTransitioningTo("Rum"))
         {
+            golpeAplicadoEnCiclo = false;
             animacionActual = "Rum";
             MoverHaciaJugador(runSpeed);
         }
@@ -283,22 +317,27 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
         {
             animacionActual = "Salto";
             MoverHaciaJugador(leapSpeed);
+            VerificarImpactoAtaqueCuerpoACuerpo("Salto", 3.0f, 2f, 0.40f, 0.85f);
         }
         else if (IsStateOrTransitioningTo("Se prepara para atacar"))
         {
+            golpeAplicadoEnCiclo = false;
             animacionActual = "Se prepara para atacar";
         }
         else if (IsStateOrTransitioningTo("Ataque_Patada"))
         {
             animacionActual = "Ataque_Patada";
+            VerificarImpactoAtaqueCuerpoACuerpo("Ataque_Patada", 3.2f, 1f, 0.20f, 0.75f);
         }
         else if (IsStateOrTransitioningTo("Tornado"))
         {
             animacionActual = "Tornado";
+            VerificarImpactoAtaqueCuerpoACuerpo("Tornado", 3.5f, 1f, 0.15f, 0.80f);
         }
         else if (IsStateOrTransitioningTo("Patada"))
         {
             animacionActual = "Patada";
+            VerificarImpactoAtaqueCuerpoACuerpo("Patada", 2.3f, 1f, 0.20f, 0.75f);
         }
         else if (IsStateOrTransitioningTo("Hit"))
         {
@@ -312,6 +351,42 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
         else
         {
             animacionActual = "Otro";
+        }
+    }
+
+    /// <summary>
+    /// Comprueba frame a frame si el ataque físico actual golpea a Tux dentro de la ventana activa de la animación.
+    /// Deduplica para golpear máximo 1 vez por ciclo de ataque hasta que el jefe regrese a preparación o locomoción.
+    /// </summary>
+    private void VerificarImpactoAtaqueCuerpoACuerpo(string ataque, float rangoGolpe, float dano, float minNormalizedTime, float maxNormalizedTime)
+    {
+        if (golpeAplicadoEnCiclo || target == null || isDead) return;
+
+        if (currentDistanceToTarget <= rangoGolpe)
+        {
+            float normTime = 0.5f;
+            if (animator != null)
+            {
+                AnimatorStateInfo info = animator.GetCurrentAnimatorStateInfo(0);
+                normTime = info.normalizedTime % 1.0f;
+            }
+
+            if (normTime >= minNormalizedTime && normTime <= maxNormalizedTime)
+            {
+                golpeAplicadoEnCiclo = true;
+
+                IDamageable danable = target.GetComponent<IDamageable>() ??
+                                      target.GetComponentInParent<IDamageable>() ??
+                                      target.GetComponentInChildren<IDamageable>();
+
+                if (danable != null && !danable.IsDead)
+                {
+                    danable.TakeDamage(dano);
+#if UNITY_EDITOR
+                    Debug.Log($"<color=orange>[WindowsBossAI]</color> ¡Impacto físico ({ataque}) conectó a Tux! Daño: {dano}");
+#endif
+                }
+            }
         }
     }
 
@@ -357,7 +432,15 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
     {
         if (isDead) return;
 
-        currentHealth -= Mathf.Abs(amount);
+        float danoFinal = Mathf.Abs(amount);
+        if (commandAttacks != null && commandAttacks.EstaExhausto)
+        {
+            danoFinal *= 1.5f; // Ventana de castigo crítico durante estado exhausto
+        }
+
+        currentHealth -= danoFinal;
+        ActualizarFaseActual(true);
+        OnBossHealthChanged?.Invoke(currentHealth, maxHealth);
 
         if (currentHealth <= 0f)
         {
@@ -369,12 +452,42 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
         }
     }
 
+    private void ActualizarFaseActual(bool dispararEvento)
+    {
+        float ratio = currentHealth / Mathf.Max(1f, maxHealth);
+        int nuevaFase = 1;
+        if (ratio <= 0.35f) nuevaFase = 3;
+        else if (ratio <= 0.70f) nuevaFase = 2;
+
+        if (nuevaFase != faseActual)
+        {
+            faseActual = nuevaFase;
+            if (faseActual == 3)
+            {
+                runSpeed = 6.0f;
+                if (animator != null)
+                {
+                    animator.CrossFadeInFixedTime("Grito", 0.15f);
+                }
+            }
+            if (dispararEvento)
+            {
+                OnBossPhaseChanged?.Invoke(faseActual);
+            }
+        }
+    }
+
     /// <summary>
     /// Invocado directamente por las balas (BalaProyectil) al impactar contra el jefe.
-    /// Aplica el daño y activa la animación reactiva de impacto.
+    /// Aplica el daño y activa la animación reactiva de impacto si no es bloqueado por el firewall.
     /// </summary>
     public void RecibirDisparo(float dano, Vector3 puntoImpacto, Vector3 direccionBala)
     {
+        if (commandAttacks != null && commandAttacks.NotificarImpactoEnEscudo(null, puntoImpacto, direccionBala))
+        {
+            return; // Bloqueado frontalmente por el firewall de Windows
+        }
+
         TakeDamage(dano);
     }
 
@@ -394,8 +507,13 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
                 animator.ResetTrigger(hitTriggerHash);
             }
 
-            // Hiperarmadura en ataques pesados (Salto, Tornado): el jefe absorbe el daño sin cortar bruscamente el ataque
+            // Hiperarmadura en ataques pesados (Salto, Tornado) o ataques especiales (Kamehameha, SaltaLoco, PoseCansado)
             if (hiperArmaduraEnAtaquesPesados && (IsStateOrTransitioningTo("Salto") || IsStateOrTransitioningTo("Tornado")))
+            {
+                return;
+            }
+
+            if (commandAttacks != null && commandAttacks.EstaEjecutandoAtaqueEspecial)
             {
                 return;
             }
@@ -417,12 +535,20 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
     {
         currentHealth = Mathf.Max(0f, nuevaVida);
         isDead = currentHealth <= 0f;
+        ActualizarFaseActual(true);
+        OnBossHealthChanged?.Invoke(currentHealth, maxHealth);
     }
 
     public void Morir()
     {
         isDead = true;
         currentHealth = 0f;
+        if (commandAttacks != null)
+        {
+            commandAttacks.LimpiarAtaquesActivosPublico();
+        }
+        OnBossHealthChanged?.Invoke(0f, maxHealth);
+        OnBossDied?.Invoke();
 
         if (animator != null && hasDieParam)
         {
@@ -582,6 +708,8 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
     public string AnimacionActual => animacionActual;
     public float CurrentHealth => currentHealth;
     public float MaxHealth => maxHealth;
+    public int FaseActual => faseActual;
+    public WindowsCommandAttacks CommandAttacks => commandAttacks;
 
     public Transform Target
     {

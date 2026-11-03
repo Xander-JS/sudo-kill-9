@@ -15,7 +15,7 @@ using UnityEngine.InputSystem;
 /// </summary>
 [RequireComponent(typeof(Animator))]
 [RequireComponent(typeof(CharacterController))]
-public class LinuxCombatIK : MonoBehaviour
+public class LinuxCombatIK : MonoBehaviour, IDamageable
 {
     // ========================================================================= //
     // CONFIGURACIÓN DE CÁMARA EN TERCERA PERSONA (OVER-THE-SHOULDER)            //
@@ -105,6 +105,22 @@ public class LinuxCombatIK : MonoBehaviour
 
     [Tooltip("Aceleración de gravedad aplicada al personaje.")]
     public float gravedad = -9.81f;
+
+    [Header("Sistema de Salud e Integración con Jugador")]
+    [Tooltip("Referencia al componente PlayerHealth. Si es null, se busca automáticamente o se usa vida interna.")]
+    [SerializeField] private PlayerHealth playerHealth;
+    [SerializeField] private float vidaInterna = 100f;
+    [SerializeField] private float maxVidaInterna = 100f;
+    [SerializeField] private bool estaMuerto = false;
+
+    [Header("Efectos de Estado / Debuffs")]
+    [Tooltip("Factor multiplicador de velocidad horizontal (afectado por debuffs como taskkill).")]
+    [SerializeField] private float factorRalentizacion = 1f;
+    private Coroutine corrutinaRalentizacion;
+
+    // Eventos estáticos de salud del jugador (para que HUD, pantallas de fin de juego o logros escuchen sin acoplamiento directo)
+    public static event System.Action<float, float> OnPlayerHealthChanged;
+    public static event System.Action OnPlayerDied;
 
     // ========================================================================= //
     // SISTEMA PREEXISTENTE: CALIBRACIÓN DE POSES E IK DE DOS MANOS              //
@@ -257,6 +273,57 @@ public class LinuxCombatIK : MonoBehaviour
     public WeaponPoseProfile Profile => profile;
     public bool ArmaActiva => armaActiva;
     public bool EstaApuntando => estaApuntando;
+    public bool IsDead => playerHealth != null ? playerHealth.IsDead : estaMuerto;
+    public float CurrentHealth => playerHealth != null ? playerHealth.CurrentHealth : vidaInterna;
+    public float MaxHealth => playerHealth != null ? playerHealth.MaxHealth : maxVidaInterna;
+    public PlayerHealth HealthComponent => playerHealth;
+    public float FactorRalentizacion => factorRalentizacion;
+
+    /// <summary>
+    /// Aplica daño al jugador reduciendo su salud a través de PlayerHealth (o fallback interno)
+    /// y notifica a los oyentes mediante OnPlayerHealthChanged y OnPlayerDied.
+    /// </summary>
+    public void TakeDamage(float amount)
+    {
+        if (IsDead || amount <= 0f) return;
+
+        if (playerHealth != null)
+        {
+            playerHealth.TakeDamage(Mathf.Max(1, Mathf.RoundToInt(amount)));
+        }
+        else
+        {
+            vidaInterna = Mathf.Max(0f, vidaInterna - amount);
+            OnPlayerHealthChanged?.Invoke(vidaInterna, maxVidaInterna);
+            if (vidaInterna <= 0f)
+            {
+                estaMuerto = true;
+                OnPlayerDied?.Invoke();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Aplica un debuff temporal de velocidad (por ejemplo el comando taskkill de Windows)
+    /// sin afectar la gravedad ni la rotación de cámara.
+    /// </summary>
+    public void AplicarRalentizacion(float duracion, float factor)
+    {
+        if (!gameObject.activeInHierarchy) return;
+        if (corrutinaRalentizacion != null)
+        {
+            StopCoroutine(corrutinaRalentizacion);
+        }
+        corrutinaRalentizacion = StartCoroutine(RutinaRalentizacion(duracion, factor));
+    }
+
+    private System.Collections.IEnumerator RutinaRalentizacion(float duracion, float factor)
+    {
+        factorRalentizacion = Mathf.Clamp(factor, 0.05f, 1f);
+        yield return new WaitForSeconds(duracion);
+        factorRalentizacion = 1f;
+        corrutinaRalentizacion = null;
+    }
 
     // Dibuja el punto de agarre y la boca del cañón en la vista de escena
     private void OnDrawGizmos()
@@ -364,6 +431,12 @@ public class LinuxCombatIK : MonoBehaviour
     {
         BloquearCursor(false);
         if (crosshairUI != null) crosshairUI.EstaApuntando = false;
+
+        if (playerHealth != null)
+        {
+            playerHealth.OnHealthChanged -= OnPlayerHealthChangedInternal;
+            playerHealth.OnDeath -= OnPlayerDeathInternal;
+        }
     }
 
     private void Start()
@@ -392,6 +465,41 @@ public class LinuxCombatIK : MonoBehaviour
         ValidarYRepararReferenciasArmaIK();
         GarantizarMuzzlePoint();
         LocalizarCrosshairUI();
+
+        // Configurar e inicializar sistema de salud del jugador
+        ConfigurarSaludJugador();
+    }
+
+    private void ConfigurarSaludJugador()
+    {
+        if (playerHealth == null) playerHealth = GetComponent<PlayerHealth>();
+        if (playerHealth == null) playerHealth = GetComponentInChildren<PlayerHealth>();
+        if (playerHealth == null) playerHealth = GetComponentInParent<PlayerHealth>();
+        if (playerHealth == null) playerHealth = gameObject.AddComponent<PlayerHealth>();
+
+        if (playerHealth != null)
+        {
+            playerHealth.OnHealthChanged -= OnPlayerHealthChangedInternal;
+            playerHealth.OnHealthChanged += OnPlayerHealthChangedInternal;
+            playerHealth.OnDeath -= OnPlayerDeathInternal;
+            playerHealth.OnDeath += OnPlayerDeathInternal;
+            OnPlayerHealthChanged?.Invoke(playerHealth.CurrentHealth, playerHealth.MaxHealth);
+        }
+        else
+        {
+            OnPlayerHealthChanged?.Invoke(vidaInterna, maxVidaInterna);
+        }
+    }
+
+    private void OnPlayerHealthChangedInternal(int current, int max)
+    {
+        OnPlayerHealthChanged?.Invoke(current, max);
+    }
+
+    private void OnPlayerDeathInternal()
+    {
+        estaMuerto = true;
+        OnPlayerDied?.Invoke();
     }
 
     /// <summary>
@@ -768,6 +876,25 @@ public class LinuxCombatIK : MonoBehaviour
 
     private void Update()
     {
+        if (IsDead)
+        {
+            BloquearCursor(false);
+            if (crosshairUI != null) crosshairUI.EstaApuntando = false;
+            if (controlador != null && controlador.enabled)
+            {
+                if (controlador.isGrounded && velocidadCaida.y < 0f)
+                {
+                    velocidadCaida.y = -2f;
+                }
+                else
+                {
+                    velocidadCaida.y += gravedad * Time.deltaTime;
+                }
+                controlador.Move(velocidadCaida * Time.deltaTime);
+            }
+            return;
+        }
+
         // ========================================================================= //
         // 1. GESTIÓN DE CURSOR (BLOQUEO / LIBERACIÓN CON ESCAPE Y CLIC)             //
         // ========================================================================= //
@@ -813,6 +940,12 @@ public class LinuxCombatIK : MonoBehaviour
     /// </summary>
     private void GestionarCursor()
     {
+        if (IsDead)
+        {
+            BloquearCursor(false);
+            return;
+        }
+
         bool escapePresionado = Input.GetKeyDown(KeyCode.Escape);
         bool clicIzquierdo = Input.GetMouseButtonDown(0);
         bool clicDerecho = Input.GetMouseButtonDown(1);
@@ -1041,7 +1174,7 @@ public class LinuxCombatIK : MonoBehaviour
                 velocidadCaida.y += gravedad * Time.deltaTime;
             }
 
-            Vector3 finalMove = (direccionMovimiento * velocidad) + velocidadCaida;
+            Vector3 finalMove = (direccionMovimiento * (velocidad * factorRalentizacion)) + velocidadCaida;
             controlador.Move(finalMove * Time.deltaTime);
         }
 
@@ -1173,6 +1306,8 @@ public class LinuxCombatIK : MonoBehaviour
     /// </summary>
     private void ActualizarCombateYDisparo()
     {
+        if (IsDead) return;
+
         bool clicDerecho = Input.GetMouseButton(1);
         bool clicIzquierdoPresionado = Input.GetMouseButtonDown(0);
         bool clicIzquierdoMantenido = Input.GetMouseButton(0);
@@ -2118,13 +2253,23 @@ public class LinuxCombatIK : MonoBehaviour
         bool p14 = velocidad <= 3.0f && velocidad >= 2.0f;
         exito &= p14;
 
+        // 15. Prueba IDamageable y Ralentización en LinuxCombatIK
+        float vidaAntesDano = CurrentHealth;
+        TakeDamage(10f);
+        bool p15Dano = CurrentHealth < vidaAntesDano || (playerHealth != null && playerHealth.CurrentHealth < vidaAntesDano);
+        AplicarRalentizacion(0.1f, 0.3f);
+        bool p15Ralentizacion = Mathf.Approximately(factorRalentizacion, 0.3f);
+        factorRalentizacion = 1f;
+        bool p15 = p15Dano && p15Ralentizacion;
+        exito &= p15;
+
         if (Application.isPlaying) Destroy(windowsDummy);
         else DestroyImmediate(windowsDummy);
 
-        Debug.Log($"<color={(exito ? "green" : "red")}>[LinuxCombatIK - Verificación Combate 7-14]</color> " +
+        Debug.Log($"<color={(exito ? "green" : "red")}>[LinuxCombatIK - Verificación Combate 7-15]</color> " +
                   $"P7(MuzzlePoint)={p7}, P8(ArmaActiva/Camina_arma)={p8}, P9(Crosshair Solo Apuntar)={p9}, " +
                   $"P10(Física y Spawn Bala)={p10}, P11(Scene View Input Seguro)={p11}, P12(Impacto/Daño Capa 0)={p12}, " +
-                  $"P13(Colisión Windows / Sin Traspaso)={p13}, P14(Velocidad Linux Reducida)={p14}");
+                  $"P13(Colisión Windows / Sin Traspaso)={p13}, P14(Velocidad Linux Reducida)={p14}, P15(Salud/Ralentización)={p15}");
 
         return exito;
     }

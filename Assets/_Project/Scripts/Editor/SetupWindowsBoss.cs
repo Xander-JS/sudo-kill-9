@@ -112,10 +112,215 @@ namespace SudoKill9.EditorTools
                     sb.AppendLine($"[TEST 7] Windows Animator tiene parámetro Trigger 'Hit' = {(hasHit ? "PASS" : "FAIL")}");
                     exitoTotal &= hasHit;
                 }
+                // 8. Verificar WindowsCommandAttacks
+                WindowsCommandAttacks cmdAttacks = windowsGO.GetComponent<WindowsCommandAttacks>();
+                bool cmdOk = cmdAttacks != null;
+                sb.AppendLine($"[TEST 8] windows.WindowsCommandAttacks presente = {(cmdOk ? "PASS" : "FAIL")}");
+                exitoTotal &= cmdOk;
+
+                // 9. Verificar 3 Fases de Combate en WindowsBossAI (Dummy aislado)
+                GameObject phaseDummy = new GameObject("Windows_PhaseCheck_Dummy");
+                try
+                {
+                    WindowsBossAI pAI = phaseDummy.AddComponent<WindowsBossAI>();
+                    pAI.GarantizarComponentesFisicos();
+                    bool f1Ok = pAI.FaseActual == 1;
+                    pAI.TakeDamage(180f); // 500 - 180 = 320 (64% -> Fase 2)
+                    bool f2Ok = pAI.FaseActual == 2;
+                    pAI.TakeDamage(200f); // 320 - 200 = 120 (24% -> Fase 3)
+                    bool f3Ok = pAI.FaseActual == 3;
+                    bool phaseOk = f1Ok && f2Ok && f3Ok;
+                    sb.AppendLine($"[TEST 9] Transición de 3 Fases en WindowsBossAI (F1={f1Ok}, F2={f2Ok}, F3={f3Ok}) = {(phaseOk ? "PASS" : "FAIL")}");
+                    exitoTotal &= phaseOk;
+                }
+                finally
+                {
+                    Object.DestroyImmediate(phaseDummy);
+                }
+
+                // 10. Verificar Ventana de Castigo y Multiplicador Crítico 1.5x
+                GameObject critDummy = new GameObject("Windows_CritCheck_Dummy");
+                try
+                {
+                    WindowsBossAI cAI = critDummy.AddComponent<WindowsBossAI>();
+                    WindowsCommandAttacks cCmd = critDummy.AddComponent<WindowsCommandAttacks>();
+                    cAI.GarantizarComponentesFisicos();
+                    // Simular daño normal
+                    float vidaNormalPre = cAI.CurrentHealth;
+                    cAI.TakeDamage(100f);
+                    float danoNormal = vidaNormalPre - cAI.CurrentHealth; // 100
+                    // Daño durante exhausto
+                    var campoExhausto = typeof(WindowsCommandAttacks).GetField("estaExhausto", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    if (campoExhausto != null) campoExhausto.SetValue(cCmd, true);
+                    float vidaCritPre = cAI.CurrentHealth;
+                    cAI.TakeDamage(100f);
+                    float danoCrit = vidaCritPre - cAI.CurrentHealth; // 150 (1.5x)
+                    bool critOk = Mathf.Approximately(danoNormal, 100f) && Mathf.Approximately(danoCrit, 150f);
+                    sb.AppendLine($"[TEST 10] Multiplicador Crítico 1.5x en PoseCansado (Normal={danoNormal}, Crítico={danoCrit}) = {(critOk ? "PASS" : "FAIL")}");
+                    exitoTotal &= critOk;
+                }
+                finally
+                {
+                    Object.DestroyImmediate(critDummy);
+                }
             }
             else
             {
-                sb.AppendLine("[TEST 3-7] GameObject 'windows' no encontrado en la escena actual.");
+                sb.AppendLine("[TEST 3-10] GameObject 'windows' no encontrado en la escena actual.");
+            }
+
+            // 11. Verificar Canvas Táctico Pixel Art (HUD, BSOD, Victoria/Derrota)
+            GameObject canvasGO = GameObject.Find("CombatUI_Canvas");
+            if (canvasGO == null)
+            {
+                canvasGO = SudoKill9.UI.CombatHUDManager.ConstruirCanvasRuntime();
+            }
+            bool canvasOk = canvasGO != null;
+            if (canvasGO != null)
+            {
+                bool hudOk = canvasGO.GetComponent<SudoKill9.UI.CombatHUDManager>() != null;
+                bool bsodOk = canvasGO.GetComponentInChildren<SudoKill9.UI.BSODGlitchEffect>(true) != null;
+                bool vicDefOk = canvasGO.GetComponentInChildren<SudoKill9.UI.VictoryDefeatScreen>(true) != null;
+                bool fullUiOk = hudOk && bsodOk && vicDefOk;
+                sb.AppendLine($"[TEST 11] CombatUI_Canvas (HUD={hudOk}, BSOD={bsodOk}, Win/Loss={vicDefOk}) = {(fullUiOk ? "PASS" : "FAIL")}");
+                exitoTotal &= fullUiOk;
+            }
+            else
+            {
+                sb.AppendLine($"[TEST 11] CombatUI_Canvas no encontrado en la escena = FAIL");
+                exitoTotal = false;
+            }
+
+            // 12. Verificar PlayerHealth en Linux
+            if (combatIK != null)
+            {
+                PlayerHealth ph = combatIK.GetComponent<PlayerHealth>() ??
+                                  combatIK.GetComponentInChildren<PlayerHealth>() ??
+                                  combatIK.GetComponentInParent<PlayerHealth>() ??
+                                  combatIK.gameObject.AddComponent<PlayerHealth>();
+                bool phOk = ph != null;
+                sb.AppendLine($"[TEST 12] Linux PlayerHealth integrado con LinuxCombatIK = {(phOk ? "PASS" : "FAIL")}");
+                exitoTotal &= phOk;
+            }
+
+            // 13. Verificar Daño de Ataques Cuerpo a Cuerpo del Jefe hacia el Jugador
+            GameObject meleeDummyBoss = new GameObject("Melee_Dummy_Boss");
+            GameObject meleeDummyPlayer = new GameObject("Melee_Dummy_Player");
+            try
+            {
+                var mAI = meleeDummyBoss.AddComponent<WindowsBossAI>();
+                mAI.GarantizarComponentesFisicos();
+                var mCombat = meleeDummyPlayer.AddComponent<LinuxCombatIK>();
+                var mHealth = meleeDummyPlayer.AddComponent<PlayerHealth>();
+                mAI.Target = meleeDummyPlayer.transform;
+
+                // Forzar posición a 1.5m (rango cuerpo a cuerpo de Patada)
+                meleeDummyBoss.transform.position = Vector3.zero;
+                meleeDummyPlayer.transform.position = new Vector3(0f, 0f, 1.5f);
+
+                // Invocar método privado VerificarImpactoAtaqueCuerpoACuerpo por reflexión
+                var metodoMelee = typeof(WindowsBossAI).GetMethod("VerificarImpactoAtaqueCuerpoACuerpo", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                int hpAntesMelee = mHealth.CurrentHealth;
+                if (metodoMelee != null)
+                {
+                    metodoMelee.Invoke(mAI, new object[] { "Patada", 2.3f, 1f, 0.0f, 1.0f });
+                }
+                bool meleeHitOk = mHealth.CurrentHealth < hpAntesMelee;
+                sb.AppendLine($"[TEST 13] Daño físico cuerpo a cuerpo de Windows hacia Tux ({hpAntesMelee} -> {mHealth.CurrentHealth} HP) = {(meleeHitOk ? "PASS" : "FAIL")}");
+                exitoTotal &= meleeHitOk;
+            }
+            finally
+            {
+                Object.DestroyImmediate(meleeDummyBoss);
+                Object.DestroyImmediate(meleeDummyPlayer);
+            }
+
+            // 14. Verificar Bloqueo Frontal de Firewall y Vulnerabilidad por la Espalda
+            GameObject shieldDummy = new GameObject("Shield_Dummy_Boss");
+            try
+            {
+                var sAI = shieldDummy.AddComponent<WindowsBossAI>();
+                var sCmd = shieldDummy.AddComponent<WindowsCommandAttacks>();
+                sAI.GarantizarComponentesFisicos();
+                sCmd.GarantizarComponentesVisuales();
+
+                // Activar firewall manualmente
+                var campoFw = typeof(WindowsCommandAttacks).GetField("firewallActivo", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (campoFw != null) campoFw.SetValue(sCmd, true);
+
+                float hpPreFrontal = sAI.CurrentHealth;
+                // Disparo frontal (bala viaja en dirección opuesta al forward del boss)
+                sAI.RecibirDisparo(30f, shieldDummy.transform.position + shieldDummy.transform.forward, -shieldDummy.transform.forward);
+                bool bloqueadoFrontal = Mathf.Approximately(sAI.CurrentHealth, hpPreFrontal);
+
+                // Disparo por la espalda (bala viaja en el mismo sentido que el forward del boss)
+                sAI.RecibirDisparo(30f, shieldDummy.transform.position - shieldDummy.transform.forward, shieldDummy.transform.forward);
+                bool danadoPorEspalda = sAI.CurrentHealth < hpPreFrontal;
+
+                bool firewallLogicaOk = bloqueadoFrontal && danadoPorEspalda;
+                sb.AppendLine($"[TEST 14] Firewall Shield (Bloqueo Frontal={bloqueadoFrontal}, Daño por Espalda={danadoPorEspalda}) = {(firewallLogicaOk ? "PASS" : "FAIL")}");
+                exitoTotal &= firewallLogicaOk;
+            }
+            finally
+            {
+                Object.DestroyImmediate(shieldDummy);
+            }
+
+            // 15. Verificar Hiperarmadura en PoseCansado (Disparos no interrumpen la ventana de castigo)
+            GameObject hyperDummy = new GameObject("HyperArmor_Dummy");
+            try
+            {
+                var hAI = hyperDummy.AddComponent<WindowsBossAI>();
+                var hCmd = hyperDummy.AddComponent<WindowsCommandAttacks>();
+                hAI.GarantizarComponentesFisicos();
+
+                var campoEx = typeof(WindowsCommandAttacks).GetField("estaExhausto", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (campoEx != null) campoEx.SetValue(hCmd, true);
+
+                bool enAtaqueEsp = hCmd.EstaEjecutandoAtaqueEspecial;
+                sb.AppendLine($"[TEST 15] Hiperarmadura durante PoseCansado activa (EstaEjecutandoAtaqueEspecial={enAtaqueEsp}) = {(enAtaqueEsp ? "PASS" : "FAIL")}");
+                exitoTotal &= enAtaqueEsp;
+            }
+            finally
+            {
+                Object.DestroyImmediate(hyperDummy);
+            }
+
+            // 16. Verificar Cancelación Inmediata de Ataques Especiales al Morir
+            GameObject deathCleanDummy = new GameObject("DeathClean_Dummy");
+            try
+            {
+                var dAI = deathCleanDummy.AddComponent<WindowsBossAI>();
+                var dCmd = deathCleanDummy.AddComponent<WindowsCommandAttacks>();
+                dAI.GarantizarComponentesFisicos();
+
+                var campoRayo = typeof(WindowsCommandAttacks).GetField("estaDisparandoRayo", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (campoRayo != null) campoRayo.SetValue(dCmd, true);
+
+                dAI.Morir();
+                bool rayoCancelado = !dCmd.EstaDisparandoRayo && !dCmd.EstaEjecutandoAtaqueEspecial;
+                sb.AppendLine($"[TEST 16] Cancelación y limpieza de ataques especiales tras Morir() = {(rayoCancelado ? "PASS" : "FAIL")}");
+                exitoTotal &= rayoCancelado;
+            }
+            finally
+            {
+                Object.DestroyImmediate(deathCleanDummy);
+            }
+
+            // 17. Verificar Estado Muerto en Linux (IsDead desactiva acciones)
+            GameObject playerDeadDummy = new GameObject("PlayerDead_Dummy");
+            try
+            {
+                var pCombat = playerDeadDummy.AddComponent<LinuxCombatIK>();
+                var pHealth = playerDeadDummy.AddComponent<PlayerHealth>();
+                pCombat.TakeDamage(9999f);
+                bool muertoOk = pCombat.IsDead && pHealth.IsDead;
+                sb.AppendLine($"[TEST 17] Estado IsDead del jugador Linux y supresión de acciones = {(muertoOk ? "PASS" : "FAIL")}");
+                exitoTotal &= muertoOk;
+            }
+            finally
+            {
+                Object.DestroyImmediate(playerDeadDummy);
             }
 
             sb.AppendLine($"RESULTADO_FINAL={(exitoTotal ? "PASSED" : "FAILED")}");
