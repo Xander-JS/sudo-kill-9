@@ -272,12 +272,14 @@ public class BalaProyectil : MonoBehaviour
         luz.intensity = 3.0f;
 
         ParticleSystem ps = fx.AddComponent<ParticleSystem>();
+        ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+
         ParticleSystemRenderer psr = fx.GetComponent<ParticleSystemRenderer>();
         if (psr != null)
         {
-            Shader particleShader = Shader.Find("Universal Render Pipeline/Particles/Unlit") 
-                                 ?? Shader.Find("Particles/Standard Unlit") 
-                                 ?? Shader.Find("Sprites/Default");
+            Shader particleShader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+            if (particleShader == null) particleShader = Shader.Find("Particles/Standard Unlit");
+            if (particleShader == null) particleShader = Shader.Find("Sprites/Default");
             if (particleShader != null)
             {
                 psr.material = new Material(particleShader);
@@ -285,6 +287,7 @@ public class BalaProyectil : MonoBehaviour
         }
 
         var main = ps.main;
+        main.playOnAwake = false;
         main.duration = 0.2f;
         main.loop = false;
         main.startLifetime = 0.18f;
@@ -300,6 +303,8 @@ public class BalaProyectil : MonoBehaviour
         shape.shapeType = ParticleSystemShapeType.Cone;
         shape.angle = 40f;
         shape.radius = 0.04f;
+
+        ps.Play();
 
         if (Application.isPlaying) Destroy(fx, 0.35f);
         else DestroyImmediate(fx);
