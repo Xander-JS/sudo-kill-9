@@ -121,9 +121,9 @@ public class LinuxSkeletonController : MonoBehaviour
         }
 
 #if UNITY_EDITOR
-        // Deliver keyboard input to the game even if the Game view isn't focused.
+        // Permitir que la vista de Escena (Scene View) reciba clics y zoom de ratón normalmente
         InputSystem.settings.editorInputBehaviorInPlayMode =
-            InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
+            InputSettings.EditorInputBehaviorInPlayMode.PointersAndKeyboardsRespectGameViewFocus;
 #endif
         if (Keyboard.current == null)
             Debug.LogWarning("[LinuxSkeletonController] No Keyboard detected by the Input System.");

@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using SudoKill9.Combat;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 #endif
@@ -99,8 +100,8 @@ public class LinuxCombatIK : MonoBehaviour
     // ========================================================================= //
 
     [Header("Movimiento y Gravedad")]
-    [Tooltip("Velocidad de traslación horizontal del personaje en m/s.")]
-    public float velocidad = 6f;
+    [Tooltip("Velocidad de traslación horizontal del personaje en m/s (caminata moderada y controlable).")]
+    public float velocidad = 2.7f;
 
     [Tooltip("Aceleración de gravedad aplicada al personaje.")]
     public float gravedad = -9.81f;
@@ -142,6 +143,7 @@ public class LinuxCombatIK : MonoBehaviour
     [SerializeField] private string inputZParam = "InputZ";
     [SerializeField] private string isCrouchingParam = "IsCrouching";
     [SerializeField] private string jumpStateName = "Jump";
+    [SerializeField] private string armaActivaParam = "ArmaActiva";
 
     [Header("Right Hand IK")]
     [Range(0f, 1f)] [SerializeField] private float rightHandWeight = 1f;
@@ -149,6 +151,73 @@ public class LinuxCombatIK : MonoBehaviour
     [Header("Left Hand Weights")]
     [Range(0f, 1f)] [SerializeField] private float positionWeight = 1f;
     [Range(0f, 1f)] [SerializeField] private float rotationWeight = 1f;
+
+    // ========================================================================= //
+    // CONFIGURACIÓN DE COMBATE, APUNTADO (MIRA) Y DISPARO DE BALAS              //
+    // ========================================================================= //
+
+    [Header("Activación de Arma y Animación Camina_arma")]
+    [Tooltip("Indica si el arma está actualmente activa (desenfundada). Se activa con clic derecho o clic izquierdo.")]
+    public bool armaActiva = false;
+
+    [Tooltip("Tiempo en segundos que el arma permanece activa antes de guardarse si no se vuelve a disparar o apuntar (0 = permanente).")]
+    public float tiempoParaGuardarArma = 6.0f;
+
+    [Header("Sistema de Proyectiles (Balas)")]
+    [Tooltip("Transform en la punta del cañón (MuzzlePoint). Si no se asigna, se busca o crea automáticamente en el arma.")]
+    public Transform muzzlePoint;
+
+    [Header("Calibración Manual de la Salida de Bala (Muzzle)")]
+    [Tooltip("Permite ajustar manualmente con barras o en Escena la posición exacta por donde salen las balas.")]
+    public bool ajusteManualMuzzle = true;
+
+    [Tooltip("Offset local respecto al fusil SCAR-H: X = Frente/Atrás, Y = Arriba/Abajo, Z = Izquierda/Derecha.")]
+    public Vector3 offsetMuzzleManual = new Vector3(0.42f, 0.008f, 0f);
+
+    [Tooltip("Rotación local del cañón (por defecto 0, 90, 0 para orientar hacia el frente del fusil).")]
+    public Vector3 rotacionMuzzleManual = new Vector3(0f, 90f, 0f);
+
+    [Tooltip("Prefab 3D opcional de la bala. Si está vacío, se genera automáticamente una bala 3D con estela y física.")]
+    public GameObject prefabBala;
+
+    [Tooltip("Velocidad de desplazamiento de la bala en metros por segundo.")]
+    public float velocidadBala = 65f;
+
+    [Tooltip("Tiempo de vida máximo del proyectil antes de autodestruirse.")]
+    public float tiempoVidaBala = 3.5f;
+
+    [Tooltip("Daño infligido al impactar sobre objetivos con IDamageable.")]
+    public float danoBala = 25f;
+
+    [Tooltip("Cadencia de disparo (máximo de balas por segundo).")]
+    public float cadenciaDisparo = 5f;
+
+    [Tooltip("Capas contra las que impacta la bala.")]
+    public LayerMask capasDisparo = ~0;
+
+    [Tooltip("Distancia máxima del rayo de puntería hacia donde mira la cámara.")]
+    public float distanciaMaximaMira = 100f;
+
+    [Header("Efectos y Audio Opcionales")]
+    [Tooltip("Luz puntual para el fogonazo del disparo.")]
+    public Light muzzleLight;
+
+    [Tooltip("Efecto de partículas o chispas al impactar contra paredes o enemigos.")]
+    public GameObject efectoImpactoPrefab;
+
+    [Tooltip("Efecto de sonido al disparar.")]
+    public AudioClip sonidoDisparo;
+
+    [Tooltip("Referencia a CrosshairUI (se busca automáticamente en MainCamera).")]
+    public CrosshairUI crosshairUI;
+
+    // Variables privadas de combate y disparo
+    private int armaActivaHash;
+    private bool hasArmaActivaParam;
+    private bool estaApuntando = false;
+    private float tiempoProximoDisparo = 0f;
+    private float temporizadorGuardarArma = 0f;
+    private Coroutine corrutinaMuzzleLight;
 
     // Variables privadas de cámara y rotación acumulada
     private float yawObjetivo;
@@ -182,10 +251,22 @@ public class LinuxCombatIK : MonoBehaviour
     public Transform LeftHandTarget => leftHandTarget;
     public Transform Weapon => weapon;
     public WeaponPoseProfile Profile => profile;
+    public bool ArmaActiva => armaActiva;
+    public bool EstaApuntando => estaApuntando;
 
-    // Dibuja el punto de agarre en la vista de escena
+    // Dibuja el punto de agarre y la boca del cañón en la vista de escena
     private void OnDrawGizmos()
     {
+        // 1. Boca del cañón (MuzzlePoint) visible en la vista de escena
+        if (muzzlePoint != null)
+        {
+            Gizmos.color = Color.red;
+            Gizmos.DrawWireSphere(muzzlePoint.position, 0.035f);
+            Gizmos.color = new Color(1f, 0.9f, 0.2f, 0.9f);
+            Gizmos.DrawRay(muzzlePoint.position, muzzlePoint.forward * 0.45f);
+        }
+
+        // 2. Agarre de mano izquierda
         if (leftHandTarget == null) return;
         Gizmos.color = Color.green;
         Gizmos.DrawWireSphere(leftHandTarget.position, 0.03f);
@@ -195,6 +276,17 @@ public class LinuxCombatIK : MonoBehaviour
         Gizmos.DrawLine(leftHandTarget.position, leftHandTarget.position + leftHandTarget.up * 0.08f);
         Gizmos.color = Color.blue;
         Gizmos.DrawLine(leftHandTarget.position, leftHandTarget.position + leftHandTarget.forward * 0.08f);
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        if (muzzlePoint != null)
+        {
+            Gizmos.color = new Color(1f, 0.3f, 0.1f, 0.75f);
+            Gizmos.DrawSphere(muzzlePoint.position, 0.02f);
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawRay(muzzlePoint.position, muzzlePoint.forward * 1.5f);
+        }
     }
 
     private void Awake()
@@ -215,6 +307,7 @@ public class LinuxCombatIK : MonoBehaviour
         inputXHash = Animator.StringToHash(inputXParam);
         inputZHash = Animator.StringToHash(inputZParam);
         crouchHash = Animator.StringToHash(isCrouchingParam);
+        armaActivaHash = Animator.StringToHash(armaActivaParam);
         bool hasX = false, hasZ = false;
         if (animator != null)
         {
@@ -223,11 +316,18 @@ public class LinuxCombatIK : MonoBehaviour
                 if (p.nameHash == inputXHash && p.type == AnimatorControllerParameterType.Float) hasX = true;
                 if (p.nameHash == inputZHash && p.type == AnimatorControllerParameterType.Float) hasZ = true;
                 if (p.nameHash == crouchHash && p.type == AnimatorControllerParameterType.Bool) hasCrouchParam = true;
+                if (p.nameHash == armaActivaHash && p.type == AnimatorControllerParameterType.Bool) hasArmaActivaParam = true;
             }
         }
         hasInputParams = hasX && hasZ;
 
-        // 5. Inicializar pose inicial del arma
+        // 5. Configurar MuzzlePoint y CrosshairUI
+        GarantizarMuzzlePoint();
+        LocalizarCrosshairUI();
+        if (crosshairUI != null) crosshairUI.EstaApuntando = false;
+        if (animator != null && hasArmaActivaParam) animator.SetBool(armaActivaHash, armaActiva);
+
+        // 6. Inicializar pose inicial del arma
         if (profile != null)
         {
             WeaponPoseProfile.Entry idle = profile.Get(WeaponPoseKey.Idle);
@@ -241,6 +341,18 @@ public class LinuxCombatIK : MonoBehaviour
             weapon.localPosition = currentPosition;
             weapon.localRotation = currentRotation;
         }
+    }
+
+    private void OnDisable()
+    {
+        BloquearCursor(false);
+        if (crosshairUI != null) crosshairUI.EstaApuntando = false;
+    }
+
+    private void OnDestroy()
+    {
+        BloquearCursor(false);
+        if (crosshairUI != null) crosshairUI.EstaApuntando = false;
     }
 
     private void Start()
@@ -267,6 +379,8 @@ public class LinuxCombatIK : MonoBehaviour
         // Verificar nuevamente el sistema de cámara e inicializar ángulos acumulados
         ConfigurarSistemaCamara();
         ValidarYRepararReferenciasArmaIK();
+        GarantizarMuzzlePoint();
+        LocalizarCrosshairUI();
     }
 
     /// <summary>
@@ -529,6 +643,9 @@ public class LinuxCombatIK : MonoBehaviour
             float pitchConOffset = Mathf.Clamp(pitchActual + inclinacionVerticalOffset, anguloMinimo, anguloMaximo);
             pivotCamara.localRotation = Quaternion.Euler(pitchConOffset, rotacionBaseY, rotacionBaseZ);
         }
+
+        // Bloquear y ocultar cursor al iniciar para responder inmediatamente al mouse y al teclado sin requerir clics previos
+        BloquearCursor(true);
     }
 
     /// <summary>
@@ -595,6 +712,20 @@ public class LinuxCombatIK : MonoBehaviour
         ValidarYRepararReferenciasArmaIK();
         AplicarAjustesCamaraEnTiempoReal();
         ApplyOffsets();
+
+        // Sincronizar calibración manual del cañón (MuzzlePoint) en tiempo real
+        if (weapon != null && ajusteManualMuzzle)
+        {
+            if (muzzlePoint == null)
+            {
+                GarantizarMuzzlePoint();
+            }
+            if (muzzlePoint != null && muzzlePoint.parent == weapon)
+            {
+                muzzlePoint.localPosition = offsetMuzzleManual;
+                muzzlePoint.localRotation = Quaternion.Euler(rotacionMuzzleManual);
+            }
+        }
     }
 
     /// <summary>Modo edición: ajusta el arma y el agarre según la pose elegida para preview.</summary>
@@ -641,7 +772,12 @@ public class LinuxCombatIK : MonoBehaviour
         ActualizarMovimiento();
 
         // ========================================================================= //
-        // 4. LÓGICA DE COMBATE E IK DE ARMA                                         //
+        // 4. LÓGICA DE APUNTADO (MIRA), DISPARO Y ACTIVACIÓN DE ARMA (Camina_arma) //
+        // ========================================================================= //
+        ActualizarCombateYDisparo();
+
+        // ========================================================================= //
+        // 5. LÓGICA DE COMBATE E IK DE ARMA                                         //
         // ========================================================================= //
         ActualizarPoseArmaIK();
     }
@@ -652,6 +788,9 @@ public class LinuxCombatIK : MonoBehaviour
         // 5. SEGUIMIENTO DE PIVOTE, COMPOSICIÓN OVER-THE-SHOULDER Y COLISIONES      //
         // ========================================================================= //
         ActualizarSeguimientoYColisionCamara();
+
+        // Actualizar línea de guía láser 3D proyectada desde el cañón
+        ActualizarGuiaLaser();
     }
 
     /// <summary>
@@ -664,15 +803,17 @@ public class LinuxCombatIK : MonoBehaviour
     {
         bool escapePresionado = Input.GetKeyDown(KeyCode.Escape);
         bool clicIzquierdo = Input.GetMouseButtonDown(0);
+        bool clicDerecho = Input.GetMouseButtonDown(1);
 
 #if ENABLE_INPUT_SYSTEM
         if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
         {
             escapePresionado = true;
         }
-        if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
+        if (Mouse.current != null)
         {
-            clicIzquierdo = true;
+            if (Mouse.current.leftButton.wasPressedThisFrame) clicIzquierdo = true;
+            if (Mouse.current.rightButton.wasPressedThisFrame) clicDerecho = true;
         }
 #endif
 
@@ -680,13 +821,33 @@ public class LinuxCombatIK : MonoBehaviour
         {
             BloquearCursor(false);
         }
-        else if (Cursor.lockState != CursorLockMode.Locked && clicIzquierdo)
+        else if (Cursor.lockState != CursorLockMode.Locked && (clicIzquierdo || clicDerecho))
         {
+#if UNITY_EDITOR
+            // En el Editor de Unity (incluyendo Unity 6 con PlayModeView), no bloquear el cursor si el foco está en SceneView, Inspector o Hierarchy.
+            string nombreVentana = UnityEditor.EditorWindow.focusedWindow != null ? UnityEditor.EditorWindow.focusedWindow.GetType().Name : "";
+            if (!string.IsNullOrEmpty(nombreVentana) &&
+                nombreVentana != "GameView" &&
+                nombreVentana != "PlayModeView" &&
+                !nombreVentana.Contains("Game") &&
+                !nombreVentana.Contains("Play"))
+            {
+                return;
+            }
+#endif
             bool clicSobreUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
             if (!clicSobreUI)
             {
                 BloquearCursor(true);
             }
+        }
+    }
+
+    private void OnApplicationFocus(bool hasFocus)
+    {
+        if (!hasFocus)
+        {
+            BloquearCursor(false);
         }
     }
 
@@ -782,17 +943,33 @@ public class LinuxCombatIK : MonoBehaviour
     }
 
     /// <summary>
-    /// Calcula el vector de desplazamiento horizontal (Y = 0) a partir de la orientación de PlayerRoot.
+    /// Calcula el vector de desplazamiento horizontal (Y = 0) a partir de la orientación de la cámara
+    /// proyectada sobre el plano del suelo (o de PlayerRoot como respaldo), asegurando que 'W' avance
+    /// siempre hacia el frente de la pantalla, 'S' hacia el jugador, 'A' a la izquierda y 'D' a la derecha.
     /// </summary>
     public Vector3 CalcularDireccionMovimientoHorizontal(float inputHorizontal, float inputVertical)
     {
-        Vector3 forwardHorizontal = transform.forward;
-        forwardHorizontal.y = 0f;
-        if (forwardHorizontal.sqrMagnitude > 0.0001f) forwardHorizontal.Normalize();
+        Transform cam = camaraPrincipal != null ? camaraPrincipal : (Camera.main != null ? Camera.main.transform : null);
 
-        Vector3 rightHorizontal = transform.right;
-        rightHorizontal.y = 0f;
+        Vector3 forwardHorizontal;
+        Vector3 rightHorizontal;
+
+        if (cam != null)
+        {
+            forwardHorizontal = Vector3.ProjectOnPlane(cam.forward, Vector3.up);
+            rightHorizontal = Vector3.ProjectOnPlane(cam.right, Vector3.up);
+        }
+        else
+        {
+            forwardHorizontal = Vector3.ProjectOnPlane(transform.forward, Vector3.up);
+            rightHorizontal = Vector3.ProjectOnPlane(transform.right, Vector3.up);
+        }
+
+        if (forwardHorizontal.sqrMagnitude > 0.0001f) forwardHorizontal.Normalize();
+        else forwardHorizontal = Vector3.forward;
+
         if (rightHorizontal.sqrMagnitude > 0.0001f) rightHorizontal.Normalize();
+        else rightHorizontal = Vector3.right;
 
         Vector3 direccionMovimiento = forwardHorizontal * inputVertical + rightHorizontal * inputHorizontal;
         direccionMovimiento.y = 0f;
@@ -806,8 +983,8 @@ public class LinuxCombatIK : MonoBehaviour
     }
 
     /// <summary>
-    /// Desplaza al personaje en el plano horizontal (XZ) en función de la orientación horizontal
-    /// de PlayerRoot (transform.forward y transform.right), nunca de la inclinación vertical de la cámara.
+    /// Desplaza al personaje en el plano horizontal (XZ) en función de la orientación de la cámara
+    /// proyectada en el plano del suelo, nunca de la inclinación vertical ni de ejes fijos mundiales.
     /// </summary>
     private void ActualizarMovimiento()
     {
@@ -847,10 +1024,11 @@ public class LinuxCombatIK : MonoBehaviour
 
         if (animator != null && hasInputParams)
         {
-            Vector2 animVec = new Vector2(inputHorizontal, inputVertical);
-            if (animVec.sqrMagnitude > 1f) animVec.Normalize();
-            animator.SetFloat(inputXHash, animVec.x);
-            animator.SetFloat(inputZHash, animVec.y);
+            // Proyectar el vector de movimiento al espacio local del personaje para que el Blend Tree
+            // reciba los valores de desplazamiento lateral (X) y avance/retroceso (Z) relativos al cuerpo
+            Vector3 dirLocal = transform.InverseTransformDirection(direccionMovimiento);
+            animator.SetFloat(inputXHash, dirLocal.x);
+            animator.SetFloat(inputZHash, dirLocal.z);
         }
     }
 
@@ -959,6 +1137,479 @@ public class LinuxCombatIK : MonoBehaviour
         if (angulo > 180f) angulo -= 360f;
         if (angulo < -180f) angulo += 360f;
         return angulo;
+    }
+
+    // ========================================================================= //
+    // LÓGICA DE APUNTADO (MIRA), ACTIVACIÓN DE ARMA Y DISPARO DE BALAS          //
+    // ========================================================================= //
+
+    /// <summary>
+    /// Maneja la activación del arma, el apuntado (clic derecho) que enciende la mira,
+    /// y el disparo de proyectiles (clic izquierdo) desde la punta del arma hacia el punto de mira.
+    /// Ambos clics activan el arma dando paso a la animación 'Camina_arma'.
+    /// </summary>
+    private void ActualizarCombateYDisparo()
+    {
+        bool clicDerecho = Input.GetMouseButton(1);
+        bool clicIzquierdoPresionado = Input.GetMouseButtonDown(0);
+        bool clicIzquierdoMantenido = Input.GetMouseButton(0);
+
+#if ENABLE_INPUT_SYSTEM
+        if (Mouse.current != null)
+        {
+            if (Mouse.current.rightButton.isPressed) clicDerecho = true;
+            if (Mouse.current.leftButton.wasPressedThisFrame) clicIzquierdoPresionado = true;
+            if (Mouse.current.leftButton.isPressed) clicIzquierdoMantenido = true;
+        }
+#endif
+
+        // 1. Apuntado con Clic Derecho (activa la mira en forma de cruz exclusivamente mientras se apunta)
+        estaApuntando = clicDerecho;
+
+        if (crosshairUI == null) LocalizarCrosshairUI();
+        if (crosshairUI != null)
+        {
+            crosshairUI.SoloAlApuntar = true;
+            crosshairUI.EstaApuntando = estaApuntando;
+        }
+
+        // Si se presiona clic derecho (apuntar) o clic izquierdo (disparar): activar el arma y la animación Camina_arma
+        if (clicDerecho || clicIzquierdoPresionado || clicIzquierdoMantenido)
+        {
+            if (!armaActiva)
+            {
+                ActivarArma(true);
+            }
+            temporizadorGuardarArma = tiempoParaGuardarArma;
+        }
+
+        // 2. Disparo con Clic Izquierdo (lanza bala física desde la punta del arma hacia el centro de la mira)
+        if (clicIzquierdoPresionado || (clicIzquierdoMantenido && Time.time >= tiempoProximoDisparo))
+        {
+            if (Time.time >= tiempoProximoDisparo)
+            {
+                DispararBala();
+                tiempoProximoDisparo = Time.time + (1f / Mathf.Max(0.1f, cadenciaDisparo));
+                temporizadorGuardarArma = tiempoParaGuardarArma;
+            }
+        }
+
+        // 3. Temporizador opcional para enfundar el arma automáticamente tras inactividad
+        if (tiempoParaGuardarArma > 0f && armaActiva && !estaApuntando && !clicIzquierdoMantenido)
+        {
+            temporizadorGuardarArma -= Time.deltaTime;
+            if (temporizadorGuardarArma <= 0f)
+            {
+                ActivarArma(false);
+            }
+        }
+
+        // 4. Zoom sutil al apuntar para dar sensación cinemática
+        if (camaraPrincipal != null)
+        {
+            Camera camComp = camaraPrincipal.GetComponent<Camera>();
+            if (camComp != null && campoDeVisionFOV >= 20f)
+            {
+                float fovObjetivo = estaApuntando ? Mathf.Max(25f, campoDeVisionFOV - 10f) : campoDeVisionFOV;
+                camComp.fieldOfView = Mathf.Lerp(camComp.fieldOfView, fovObjetivo, 14f * Time.deltaTime);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Activa o desactiva el estado del arma, sincronizando el parámetro 'ArmaActiva'
+    /// en el Animator para transicionar hacia o desde la animación 'Camina_arma'.
+    /// </summary>
+    public void ActivarArma(bool activar)
+    {
+        armaActiva = activar;
+
+        if (animator != null && hasArmaActivaParam)
+        {
+            animator.SetBool(armaActivaHash, activar);
+        }
+
+        if (weapon != null)
+        {
+            weapon.gameObject.SetActive(true);
+        }
+
+        if (activar)
+        {
+            temporizadorGuardarArma = tiempoParaGuardarArma;
+        }
+        else
+        {
+            estaApuntando = false;
+            if (crosshairUI != null)
+            {
+                crosshairUI.EstaApuntando = false;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Instancia y dispara una bala desde la punta del cañón (MuzzlePoint) hacia el punto
+    /// exacto enfocado por la mira en el centro de la pantalla.
+    /// Preserva colisiones con todo el entorno (incluida la Capa 0 / Default) y excluye únicamente al propio personaje.
+    /// </summary>
+    /// <summary>
+    /// Calcula el punto exacto enfocado por la mira en el mundo 3D (puntoObjetivo).
+    /// Garantiza que el raycast ignore cualquier superficie u obstáculo que quede DETRÁS del cañón del arma
+    /// (como el suelo o paredes traseras bajo la cámara), evitando disparos hacia atrás o desviaciones de paralaje.
+    /// </summary>
+    public Vector3 CalcularPuntoObjetivoMira(out Ray rayoCamara)
+    {
+        Camera cam = camaraPrincipal != null ? camaraPrincipal.GetComponent<Camera>() : Camera.main;
+        if (crosshairUI == null) LocalizarCrosshairUI();
+
+        Vector2 vp = crosshairUI != null ? crosshairUI.ObtenerPosicionViewport() : new Vector2(0.5f, 0.5f);
+        if (cam != null)
+        {
+            rayoCamara = cam.ViewportPointToRay(new Vector3(vp.x, vp.y, 0f));
+        }
+        else
+        {
+            rayoCamara = new Ray(transform.position + Vector3.up * 1.4f, transform.forward);
+        }
+
+        GarantizarMuzzlePoint();
+        Vector3 muzzlePos = muzzlePoint != null ? muzzlePoint.position : (transform.position + Vector3.up * 1.2f + transform.forward * 0.4f);
+        Vector3 forwardXZ = Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
+        if (forwardXZ.sqrMagnitude < 0.001f) forwardXZ = transform.forward;
+
+        // Distancia mínima requerida a lo largo del rayo para estar delante del cañón del jugador
+        float distMinimaAlFrente = Vector3.Dot(muzzlePos - rayoCamara.origin, rayoCamara.direction);
+
+        RaycastHit[] hits = Physics.RaycastAll(rayoCamara, distanciaMaximaMira, capasDisparo.value, QueryTriggerInteraction.Collide);
+        if (hits != null && hits.Length > 0)
+        {
+            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            Transform miRaiz = transform.root;
+            for (int i = 0; i < hits.Length; i++)
+            {
+                RaycastHit h = hits[i];
+                if (h.collider == null) continue;
+                if (h.collider.transform.root == miRaiz || h.collider.transform == transform) continue;
+
+                // El impacto debe estar estrictamente DELANTE del jugador/cañón (no detrás del jugador)
+                Vector3 toHit = h.point - muzzlePos;
+                bool estaAlFrente = (Vector3.Dot(toHit, forwardXZ) > -0.1f || Vector3.Dot(h.point - transform.position, forwardXZ) > 0.05f) 
+                                 && h.distance > (distMinimaAlFrente - 0.25f);
+                if (estaAlFrente)
+                {
+                    return h.point;
+                }
+            }
+        }
+
+        // Si no hay impacto al frente, proyectar hacia el infinito a lo largo de la línea de la mira
+        return rayoCamara.origin + rayoCamara.direction * distanciaMaximaMira;
+    }
+
+    /// <summary>
+    /// Instancia y dispara una bala desde la punta del cañón (MuzzlePoint) hacia el punto
+    /// exacto enfocado por la mira en la pantalla.
+    /// Preserva colisiones con todo el entorno (incluida la Capa 0 / Default) y excluye únicamente al propio personaje.
+    /// </summary>
+    public void DispararBala()
+    {
+        GarantizarMuzzlePoint();
+        if (muzzlePoint == null) return;
+
+        // 1. Obtener el punto objetivo exacto de la mira (filtrando cualquier obstáculo detrás del jugador)
+        Ray rayoCamara;
+        Vector3 puntoObjetivo = CalcularPuntoObjetivoMira(out rayoCamara);
+
+        // 2. Dirección de la bala desde MuzzlePoint hacia puntoObjetivo
+        Vector3 direccionDisparo = (puntoObjetivo - muzzlePoint.position);
+        Vector3 forwardXZ = Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
+        if (forwardXZ.sqrMagnitude < 0.001f) forwardXZ = transform.forward;
+
+        if (direccionDisparo.sqrMagnitude < 0.01f || Vector3.Dot(direccionDisparo.normalized, forwardXZ) < 0.05f)
+        {
+            direccionDisparo = rayoCamara.direction;
+        }
+        else
+        {
+            direccionDisparo.Normalize();
+        }
+
+        // 3. Crear y lanzar el proyectil (bala) excluyendo al propio tirador
+        BalaProyectil.Disparar(
+            prefabBala,
+            muzzlePoint.position,
+            direccionDisparo,
+            velocidadBala,
+            danoBala,
+            tiempoVidaBala,
+            capasDisparo,
+            efectoImpactoPrefab,
+            transform.root
+        );
+
+        // Notificar a la mira para activar la animación de retroceso dinámico
+        if (crosshairUI != null)
+        {
+            crosshairUI.NotificarDisparo();
+        }
+
+        // 4. Trazador de disparo instantáneo que conecta el cañón con el objetivo
+        MostrarTrazadorDisparo(muzzlePoint.position, puntoObjetivo);
+
+        // 5. Efecto de fogonazo en la boca del cañón (Muzzle Flash)
+        DispararFogonazo();
+
+        // 6. Sonido de disparo si está asignado
+        if (sonidoDisparo != null)
+        {
+            AudioSource.PlayClipAtPoint(sonidoDisparo, muzzlePoint.position, 1f);
+        }
+    }
+
+    private LineRenderer trazadorDisparo;
+
+    private void MostrarTrazadorDisparo(Vector3 origen, Vector3 destino)
+    {
+        if (trazadorDisparo == null)
+        {
+            trazadorDisparo = gameObject.AddComponent<LineRenderer>();
+            trazadorDisparo.positionCount = 2;
+            trazadorDisparo.startWidth = 0.035f;
+            trazadorDisparo.endWidth = 0.01f;
+            trazadorDisparo.useWorldSpace = true;
+            trazadorDisparo.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            trazadorDisparo.receiveShadows = false;
+            trazadorDisparo.generateLightingData = false;
+
+            Shader unlit = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Sprites/Default") ?? Shader.Find("Unlit/Color");
+            if (unlit != null)
+            {
+                Material mat = new Material(unlit);
+                trazadorDisparo.material = mat;
+            }
+            trazadorDisparo.startColor = new Color(1f, 0.95f, 0.4f, 1f);
+            trazadorDisparo.endColor = new Color(1f, 0.5f, 0.1f, 0f);
+            trazadorDisparo.enabled = false;
+        }
+
+        trazadorDisparo.SetPosition(0, origen);
+        trazadorDisparo.SetPosition(1, destino);
+        trazadorDisparo.enabled = true;
+        CancelInvoke(nameof(OcultarTrazador));
+        Invoke(nameof(OcultarTrazador), 0.06f);
+    }
+
+    private void OcultarTrazador()
+    {
+        if (trazadorDisparo != null) trazadorDisparo.enabled = false;
+    }
+
+    private LineRenderer guiaLaserLine;
+
+    /// <summary>
+    /// Dibuja una línea láser tridimensional desde la boca del cañón hacia el punto de mira exacto
+    /// cuando el jugador está apuntando y la opción está habilitada en CrosshairUI.
+    /// </summary>
+    private void ActualizarGuiaLaser()
+    {
+        bool debeMostrar = estaApuntando && crosshairUI != null && crosshairUI.activarGuiaLaser && muzzlePoint != null;
+        if (!debeMostrar)
+        {
+            if (guiaLaserLine != null && guiaLaserLine.enabled)
+            {
+                guiaLaserLine.enabled = false;
+            }
+            return;
+        }
+
+        if (guiaLaserLine == null)
+        {
+            guiaLaserLine = gameObject.AddComponent<LineRenderer>();
+            guiaLaserLine.positionCount = 2;
+            guiaLaserLine.startWidth = 0.012f;
+            guiaLaserLine.endWidth = 0.006f;
+            guiaLaserLine.useWorldSpace = true;
+            guiaLaserLine.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            guiaLaserLine.receiveShadows = false;
+            guiaLaserLine.generateLightingData = false;
+
+            Shader unlit = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Sprites/Default") ?? Shader.Find("Unlit/Color");
+            if (unlit != null)
+            {
+                Material mat = new Material(unlit);
+                mat.color = new Color(1f, 0.2f, 0.2f, 0.85f);
+                guiaLaserLine.material = mat;
+            }
+            guiaLaserLine.startColor = new Color(1f, 0.25f, 0.25f, 0.9f);
+            guiaLaserLine.endColor = new Color(1f, 0.1f, 0.1f, 0.35f);
+        }
+
+        guiaLaserLine.enabled = true;
+        Ray rayoCamara;
+        Vector3 destino = CalcularPuntoObjetivoMira(out rayoCamara);
+
+        guiaLaserLine.SetPosition(0, muzzlePoint.position);
+        guiaLaserLine.SetPosition(1, destino);
+    }
+
+    private void DispararFogonazo()
+    {
+        GarantizarLuzFogonazo();
+        if (muzzleLight == null) return;
+        if (corrutinaMuzzleLight != null) StopCoroutine(corrutinaMuzzleLight);
+        corrutinaMuzzleLight = StartCoroutine(EfectoMuzzleFlash());
+    }
+
+    private void GarantizarLuzFogonazo()
+    {
+        if (muzzlePoint == null) return;
+        if (muzzleLight == null)
+        {
+            Light l = muzzlePoint.GetComponentInChildren<Light>();
+            if (l == null)
+            {
+                GameObject luzObj = new GameObject("MuzzleFlashLight");
+                luzObj.transform.SetParent(muzzlePoint, false);
+                l = luzObj.AddComponent<Light>();
+                l.type = LightType.Point;
+                l.color = new Color(1f, 0.9f, 0.4f);
+                l.range = 3.5f;
+                l.intensity = 5f;
+                l.enabled = false;
+            }
+            muzzleLight = l;
+        }
+    }
+
+    private System.Collections.IEnumerator EfectoMuzzleFlash()
+    {
+        if (muzzleLight == null) yield break;
+        muzzleLight.enabled = true;
+        yield return new WaitForSeconds(0.04f);
+        if (muzzleLight != null) muzzleLight.enabled = false;
+    }
+
+    /// <summary>
+    /// Busca o crea el objeto MuzzlePoint exactamente en la punta frontal del cañón del arma (hijo directo de weapon).
+    /// Si 'ajusteManualMuzzle' está activo, respeta escrupulosamente los valores manuales configurados por el usuario.
+    /// </summary>
+    public void GarantizarMuzzlePoint()
+    {
+        if (weapon != null)
+        {
+            Vector3 posDeseada = ajusteManualMuzzle ? offsetMuzzleManual : new Vector3(0.42f, 0.008f, 0f);
+            Quaternion rotDeseada = Quaternion.Euler(rotacionMuzzleManual);
+
+            if (!ajusteManualMuzzle && leftHandTarget != null && leftHandTarget.parent == weapon)
+            {
+                Vector3 dirGrip = leftHandTarget.localPosition;
+                if (dirGrip.sqrMagnitude > 0.001f)
+                {
+                    posDeseada = dirGrip + dirGrip.normalized * 0.26f;
+                }
+            }
+
+            Transform encontrado = weapon.Find("MuzzlePoint");
+            if (encontrado == null)
+            {
+                // Buscar si existía en otro hijo
+                foreach (Transform t in weapon.GetComponentsInChildren<Transform>(true))
+                {
+                    if (t != null && t.name == "MuzzlePoint" && t != weapon)
+                    {
+                        encontrado = t;
+                        break;
+                    }
+                }
+            }
+
+            if (encontrado != null)
+            {
+                muzzlePoint = encontrado;
+                if (muzzlePoint.parent != weapon)
+                {
+                    muzzlePoint.SetParent(weapon, false);
+                }
+
+                if (ajusteManualMuzzle)
+                {
+                    muzzlePoint.localPosition = offsetMuzzleManual;
+                    muzzlePoint.localRotation = rotDeseada;
+                }
+                else
+                {
+                    muzzlePoint.localPosition = posDeseada;
+                    muzzlePoint.localRotation = rotDeseada;
+                    offsetMuzzleManual = posDeseada;
+                }
+
+                GarantizarLuzFogonazo();
+                return;
+            }
+
+            GameObject nuevoMuzzle = new GameObject("MuzzlePoint");
+            nuevoMuzzle.transform.SetParent(weapon, false);
+            nuevoMuzzle.transform.localPosition = posDeseada;
+            nuevoMuzzle.transform.localRotation = rotDeseada;
+            muzzlePoint = nuevoMuzzle.transform;
+            GarantizarLuzFogonazo();
+            return;
+        }
+
+        if (muzzlePoint != null) return;
+
+        // Fallback en mano derecha si weapon no está asignado
+        if (animator != null && animator.isHuman)
+        {
+            Transform rightHand = animator.GetBoneTransform(HumanBodyBones.RightHand);
+            if (rightHand != null)
+            {
+                Transform encontrado = rightHand.Find("MuzzlePoint");
+                if (encontrado != null)
+                {
+                    muzzlePoint = encontrado;
+                    return;
+                }
+                GameObject nuevoMuzzle = new GameObject("MuzzlePoint");
+                nuevoMuzzle.transform.SetParent(rightHand, false);
+                nuevoMuzzle.transform.localPosition = new Vector3(0f, 0.15f, 0.55f);
+                nuevoMuzzle.transform.localRotation = Quaternion.identity;
+                muzzlePoint = nuevoMuzzle.transform;
+                GarantizarLuzFogonazo();
+                return;
+            }
+        }
+
+        Transform encontradoEnCuerpo = transform.Find("MuzzlePoint");
+        if (encontradoEnCuerpo != null)
+        {
+            muzzlePoint = encontradoEnCuerpo;
+        }
+        else
+        {
+            GameObject nuevoMuzzle = new GameObject("MuzzlePoint");
+            nuevoMuzzle.transform.SetParent(transform, false);
+            nuevoMuzzle.transform.localPosition = new Vector3(0.25f, 1.2f, 0.5f);
+            muzzlePoint = nuevoMuzzle.transform;
+            GarantizarLuzFogonazo();
+        }
+    }
+
+    /// <summary>
+    /// Localiza la referencia a CrosshairUI en la cámara principal o en la escena y garantiza
+    /// que solo se active durante el apuntado con clic derecho.
+    /// </summary>
+    public void LocalizarCrosshairUI()
+    {
+        if (crosshairUI == null && camaraPrincipal != null) crosshairUI = camaraPrincipal.GetComponent<CrosshairUI>();
+        if (crosshairUI == null) crosshairUI = GetComponentInChildren<CrosshairUI>(true);
+        if (crosshairUI == null) crosshairUI = Object.FindFirstObjectByType<CrosshairUI>();
+
+        if (crosshairUI != null)
+        {
+            crosshairUI.SoloAlApuntar = true;
+        }
     }
 
     // ========================================================================= //
@@ -1095,6 +1746,23 @@ public class LinuxCombatIK : MonoBehaviour
     {
         if (animator == null) animator = GetComponent<Animator>();
 
+        // 1. Apuntado de torso superior, hombros y cabeza hacia la mira configurada
+        if (animator != null && animator.isHuman)
+        {
+            float pesoLook = estaApuntando ? 0.75f : (armaActiva ? 0.45f : 0f);
+            if (pesoLook > 0.01f && camaraPrincipal != null)
+            {
+                Ray rayoCamara;
+                Vector3 lookTarget = CalcularPuntoObjetivoMira(out rayoCamara);
+                animator.SetLookAtWeight(pesoLook, 0.35f, 0.75f, 0.3f, 0.5f);
+                animator.SetLookAtPosition(lookTarget);
+            }
+            else
+            {
+                animator.SetLookAtWeight(0f);
+            }
+        }
+
         Vector3 reach = OffsetToWorld(currentHandOffset);
 
         // Mano derecha: desplaza el hueso hacia adelante manteniendo orientación
@@ -1212,5 +1880,164 @@ public class LinuxCombatIK : MonoBehaviour
                   $"P1(Vertical Brusco)={p1Up && p1Down}, P2(Horizontal)={p2}, P3(Combinado XZ)={p3}, " +
                   $"P4(Límites [{anguloMinimo},{anguloMaximo}])={p4Min && p4Max}, P5(Estabilidad)={p5}, P6(IK/Física)={p6}");
         return exito;
+    }
+
+    /// <summary>
+    /// Pruebas automatizadas de calidad para el sistema de combate, activación de arma (Camina_arma),
+    /// disparo, físicas de proyectil, y entrega de daño en Capa 0 (Default).
+    /// </summary>
+    [ContextMenu("Ejecutar Pruebas de Combate y Disparo (7-12)")]
+    public bool EjecutarPruebasCalidadCombate()
+    {
+        bool exito = true;
+
+        // 7. Prueba MuzzlePoint: garantizar que la punta del cañón existe y está orientada hacia adelante
+        GarantizarMuzzlePoint();
+        bool p7 = muzzlePoint != null && (weapon == null || muzzlePoint.parent == weapon);
+        exito &= p7;
+
+        // 8. Prueba Activación de Arma (Camina_arma): toggle de armaActiva y parámetro de Animator
+        bool estadoPrevio = armaActiva;
+        ActivarArma(true);
+        bool p8Activar = armaActiva && (!hasArmaActivaParam || animator.GetBool(armaActivaHash));
+        ActivarArma(false);
+        bool p8Desactivar = !armaActiva && (!hasArmaActivaParam || !animator.GetBool(armaActivaHash));
+        ActivarArma(estadoPrevio);
+        bool p8 = p8Activar && p8Desactivar;
+        exito &= p8;
+
+        // 9. Prueba CrosshairUI: mira oculta por defecto y activa solo al apuntar
+        LocalizarCrosshairUI();
+        bool p9 = crosshairUI != null && crosshairUI.SoloAlApuntar;
+        exito &= p9;
+
+        // 10. Prueba Spawning y Física de Bala (BalaProyectil con Rigidbody y SphereCollider)
+        Vector3 spawnPos = muzzlePoint != null ? muzzlePoint.position : transform.position + Vector3.up;
+        BalaProyectil bala = BalaProyectil.Disparar(
+            prefabBala,
+            spawnPos,
+            transform.forward,
+            velocidadBala,
+            danoBala,
+            tiempoVidaBala,
+            capasDisparo,
+            null,
+            transform.root
+        );
+        bool p10 = bala != null &&
+                   bala.GetComponent<BalaProyectil>() != null &&
+                   bala.GetComponent<Rigidbody>() != null &&
+                   bala.GetComponent<Collider>() != null;
+        if (bala != null)
+        {
+            if (Application.isPlaying) Destroy(bala.gameObject);
+            else DestroyImmediate(bala.gameObject);
+        }
+        exito &= p10;
+
+        // 11. Prueba Navegación de Scene View: verificar que el input no secuestre la Scene View
+#if ENABLE_INPUT_SYSTEM
+        bool p11 = UnityEngine.InputSystem.InputSystem.settings.editorInputBehaviorInPlayMode ==
+                   UnityEngine.InputSystem.InputSettings.EditorInputBehaviorInPlayMode.PointersAndKeyboardsRespectGameViewFocus;
+        exito &= p11;
+#else
+        bool p11 = true;
+#endif
+
+        // 12. Prueba Impacto y Daño en Capa 0 (Default): verificar que la bala colisiona y entrega daño
+        GameObject objetivoPrueba = new GameObject("DummyTarget_TestL0");
+        objetivoPrueba.layer = 0; // Capa 0 (Default)
+        BoxCollider boxCol = objetivoPrueba.AddComponent<BoxCollider>();
+        PruebaDamageableTarget mockDanable = objetivoPrueba.AddComponent<PruebaDamageableTarget>();
+
+        Vector3 posObjetivo = spawnPos + transform.forward * 2f;
+        objetivoPrueba.transform.position = posObjetivo;
+
+        BalaProyectil balaImpacto = BalaProyectil.Disparar(
+            prefabBala,
+            spawnPos,
+            transform.forward,
+            velocidadBala,
+            25f,
+            2f,
+            capasDisparo,
+            null,
+            transform.root
+        );
+
+        balaImpacto.ProcesarImpacto(boxCol, posObjetivo, -transform.forward);
+        bool p12 = mockDanable.danoRecibido >= 25f;
+
+        if (Application.isPlaying) Destroy(objetivoPrueba);
+        else DestroyImmediate(objetivoPrueba);
+
+        exito &= p12;
+
+        // 13. Prueba Colisión con WindowsBossAI: asegurar collider calibrado, barrido continuo, solapamiento a quemarropa y recepción de daño
+        GameObject windowsDummy = new GameObject("Windows_TestDummy");
+        windowsDummy.transform.localScale = new Vector3(0.2f, 0.2f, 0.2f);
+        WindowsBossAI bossAI = windowsDummy.AddComponent<WindowsBossAI>();
+        bossAI.GarantizarComponentesFisicos();
+
+        CapsuleCollider colBoss = windowsDummy.GetComponent<CapsuleCollider>();
+        bool p13Col = colBoss != null && !colBoss.isTrigger && colBoss.height > 8f;
+
+        float vidaInicial = bossAI.CurrentHealth;
+        Vector3 posBoss = spawnPos + transform.forward * 2f;
+        windowsDummy.transform.position = posBoss;
+
+        // A) Probar barrido volumétrico continuo (SphereCast)
+        bool sweepOk = Physics.SphereCast(spawnPos, 0.05f, transform.forward, out RaycastHit hitBoss, 4f, capasDisparo.value, QueryTriggerInteraction.Collide);
+        bool sweepDetectaBoss = sweepOk && hitBoss.collider != null && (hitBoss.collider == colBoss || hitBoss.collider.transform.root == windowsDummy.transform);
+
+        // B) Probar solapamiento a quemarropa (OverlapSphere)
+        Collider[] overlaps = Physics.OverlapSphere(posBoss + Vector3.up * 0.5f, 0.1f, capasDisparo.value, QueryTriggerInteraction.Collide);
+        bool overlapDetectaBoss = overlaps != null && System.Array.Exists(overlaps, c => c == colBoss || c.transform.root == windowsDummy.transform);
+
+        // C) Probar procesamiento de impacto directo y aplicación de daño
+        BalaProyectil balaBoss = BalaProyectil.Disparar(
+            prefabBala,
+            spawnPos,
+            transform.forward,
+            velocidadBala,
+            35f,
+            2f,
+            capasDisparo,
+            null,
+            transform.root
+        );
+
+        balaBoss.ProcesarImpacto(colBoss, posBoss, -transform.forward);
+        bool p13Dano = bossAI.CurrentHealth < vidaInicial;
+        bool p13 = p13Col && sweepDetectaBoss && overlapDetectaBoss && p13Dano;
+        exito &= p13;
+
+        // 14. Prueba Velocidad Reducida de Caminata de Linux: verificar que la velocidad es lenta y controlable (<= 3.0 m/s)
+        bool p14 = velocidad <= 3.0f && velocidad >= 2.0f;
+        exito &= p14;
+
+        if (Application.isPlaying) Destroy(windowsDummy);
+        else DestroyImmediate(windowsDummy);
+
+        Debug.Log($"<color={(exito ? "green" : "red")}>[LinuxCombatIK - Verificación Combate 7-14]</color> " +
+                  $"P7(MuzzlePoint)={p7}, P8(ArmaActiva/Camina_arma)={p8}, P9(Crosshair Solo Apuntar)={p9}, " +
+                  $"P10(Física y Spawn Bala)={p10}, P11(Scene View Input Seguro)={p11}, P12(Impacto/Daño Capa 0)={p12}, " +
+                  $"P13(Colisión Windows / Sin Traspaso)={p13}, P14(Velocidad Linux Reducida)={p14}");
+
+        return exito;
+    }
+}
+
+/// <summary>
+/// Componente de soporte interno para verificar la recepción de daño de IDamageable en pruebas.
+/// </summary>
+public class PruebaDamageableTarget : MonoBehaviour, IDamageable
+{
+    public float danoRecibido = 0f;
+    public bool IsDead => danoRecibido >= 100f;
+
+    public void TakeDamage(float amount)
+    {
+        danoRecibido += amount;
     }
 }
