@@ -62,11 +62,23 @@ namespace SudoKill9.Enemies
         protected float lastAttackTime = -999f;
         protected bool hasAlerted;
         private float nextTargetSearchTime;
+        /// <summary>Persecución permanente (enemigos de oleada): ignora alertRange y nunca pierde al objetivo.</summary>
+        protected bool persistentPursuit;
 
         private int speedHash, isCrawlingHash, roarHash, attackHash, attackIndexHash, hitHash, dieHash;
 
         public EnemyState CurrentState => currentState;
         public Transform Target => target;
+
+        /// <summary>
+        /// Asigna el objetivo desde fuera (p. ej. SurvivalLevelController al generar la instancia).
+        /// Con <paramref name="pursueAnywhere"/> el enemigo lo persigue aunque aparezca fuera de alertRange.
+        /// </summary>
+        public void SetTarget(Transform newTarget, bool pursueAnywhere = false)
+        {
+            target = newTarget;
+            persistentPursuit = pursueAnywhere;
+        }
 
         /// <summary>Modo de locomoción lenta (arrastre). Sobrescribir para enemigos que no se arrastran.</summary>
         protected virtual bool IsCrawling => stats.IsCriticalHealth;
@@ -139,7 +151,7 @@ namespace SudoKill9.Enemies
 
         protected virtual void UpdateIdle(float distance)
         {
-            if (distance > alertRange) return;
+            if (distance > alertRange && !persistentPursuit) return;
             ChangeState(hasAlerted || alertDuration <= 0f ? EnemyState.Chase : EnemyState.Alert);
         }
 
@@ -156,7 +168,7 @@ namespace SudoKill9.Enemies
 
         protected virtual void UpdateChase(float distance)
         {
-            if (distance > alertRange * loseTargetMultiplier)
+            if (distance > alertRange * loseTargetMultiplier && !persistentPursuit)
             {
                 ChangeState(EnemyState.Idle);
                 return;
