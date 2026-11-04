@@ -1,6 +1,10 @@
 using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Localization;
+using UnityEngine.Localization.Settings;
+using UnityEngine.Localization.Tables;
 using UnityEngine.UI;
 
 namespace SudoKill9.Levels
@@ -9,6 +13,8 @@ namespace SudoKill9.Levels
     /// HUD del nivel de supervivencia: temporizador, contador de enemigos, avisos de horda y el panel
     /// modal de nivel completado / derrota. Construye su propio Canvas en Awake (no requiere prefab)
     /// con el estilo del proyecto: TextMeshPro en verde primario sobre fondo oscuro.
+    /// Todos los textos salen de la String Table "Gameplay" (ver <see cref="GameplayKeys"/>) y se
+    /// recargan al cambiar <see cref="LocalizationSettings.SelectedLocale"/>, sin reiniciar la escena.
     /// </summary>
     [RequireComponent(typeof(SurvivalLevelController))]
     public class SurvivalLevelHUD : MonoBehaviour
@@ -22,12 +28,7 @@ namespace SudoKill9.Levels
         [SerializeField] private Color panelBackground = new Color(0.04f, 0.07f, 0.06f, 0.94f);
         [SerializeField] private Color overlayColor = new Color(0f, 0f, 0f, 0.6f);
 
-        [Header("Textos")]
-        [SerializeField] private string surviveLabel = "SURVIVE";
-        [SerializeField] private string clearLabel = "ELIMINATE REMAINING: {0}";
-        [SerializeField] private string continueHint = "Press [{0}] to continue";
-        [SerializeField] private string defeatTitle = "KERNEL PANIC";
-        [SerializeField] private string defeatHint = "Press [{0}] to retry";
+        [Header("Avisos")]
         [SerializeField] private float announcementDuration = 2.2f;
 
         private SurvivalLevelController level;
@@ -35,6 +36,13 @@ namespace SudoKill9.Levels
         private TMP_Text panelTitle, panelHint;
         private CanvasGroup panelGroup;
         private Coroutine announceRoutine;
+
+        // Localización: tabla del locale activo + textos "vivos" que hay que re-traducir al cambiar de idioma.
+        private StringTable table;
+        private int tableRequest;
+        private readonly HashSet<string> reportedMissing = new HashSet<string>();
+        private string announceKey, panelKey;
+        private object announceArg, panelArg;
 
         private void Awake()
         {
@@ -47,6 +55,8 @@ namespace SudoKill9.Levels
             level.OnAnnouncement += Announce;
             level.onLevelCompleted.AddListener(ShowCompleted);
             level.onLevelFailed.AddListener(ShowFailed);
+            LocalizationSettings.SelectedLocaleChanged += OnLocaleChanged;
+            LoadTable();
         }
 
         private void OnDisable()
@@ -54,7 +64,58 @@ namespace SudoKill9.Levels
             level.OnAnnouncement -= Announce;
             level.onLevelCompleted.RemoveListener(ShowCompleted);
             level.onLevelFailed.RemoveListener(ShowFailed);
+            LocalizationSettings.SelectedLocaleChanged -= OnLocaleChanged;
         }
+
+        // ------------------------------------------------------------------ Localización
+
+        private void OnLocaleChanged(Locale _) => LoadTable();
+
+        private void LoadTable()
+        {
+            int request = ++tableRequest; // si el idioma cambia dos veces seguidas, gana la última petición
+            var op = LocalizationSettings.StringDatabase.GetTableAsync(GameplayKeys.Table);
+            op.Completed += h =>
+            {
+                if (this == null || request != tableRequest) return;
+                table = h.Result;
+                if (table == null) Debug.LogError($"[SurvivalLevelHUD] No se pudo cargar la String Table '{GameplayKeys.Table}'. Ejecuta Tools/Survival Levels/Sync Gameplay Localization (es-en).", this);
+                RefreshStaticTexts();
+            };
+        }
+
+        /// <summary>Texto traducido de <paramref name="key"/>; con argumentos aplica string.Format.</summary>
+        private string L(string key, params object[] args)
+        {
+            if (string.IsNullOrEmpty(key)) return string.Empty;
+            if (table == null) return string.Empty; // la tabla llega en el primer frame; no mostrar claves crudas
+
+            string value = table.GetEntry(key)?.LocalizedValue;
+            if (string.IsNullOrEmpty(value))
+            {
+                if (reportedMissing.Add(key))
+                    Debug.LogWarning($"[SurvivalLevelHUD] Falta la clave '{key}' en '{GameplayKeys.Table}' ({table.LocaleIdentifier.Code}).", this);
+                return key;
+            }
+            return args == null || args.Length == 0 ? value : string.Format(value, args);
+        }
+
+        /// <summary>Nombre localizado de la tecla (gameplay_key_space → ESPACIO); si no hay clave, el nombre del enum.</summary>
+        private string KeyName(UnityEngine.InputSystem.Key key)
+        {
+            string id = GameplayKeys.KeyPrefix + key.ToString().ToLowerInvariant();
+            string value = table?.GetEntry(id)?.LocalizedValue;
+            return string.IsNullOrEmpty(value) ? key.ToString().ToUpperInvariant() : value;
+        }
+
+        /// <summary>Re-traduce los textos que no se recalculan cada frame (aviso activo y título del panel).</summary>
+        private void RefreshStaticTexts()
+        {
+            if (announceKey != null) announceText.text = L(announceKey, Args(announceArg));
+            if (panelKey != null) panelTitle.text = L(panelKey, Args(panelArg));
+        }
+
+        private static object[] Args(object arg) => arg == null ? null : new[] { arg };
 
         private void Update()
         {
@@ -63,29 +124,29 @@ namespace SudoKill9.Levels
                 case SurvivalLevelState.Starting:
                     timerText.text = Mathf.CeilToInt(level.StartCountdown).ToString();
                     timerText.color = primaryGreen;
-                    subtitleText.text = $"LEVEL {level.LevelNumber} · {surviveLabel} {Mathf.RoundToInt(level.Duration)}s";
+                    subtitleText.text = L(GameplayKeys.LevelIntro, level.LevelNumber, Mathf.RoundToInt(level.Duration));
                     break;
 
                 case SurvivalLevelState.Running:
                     float t = level.RemainingTime;
                     timerText.text = $"{(int)t / 60:00}:{(int)t % 60:00}";
                     timerText.color = t <= 10f ? dangerColor : level.InFinalStretch ? warningColor : primaryGreen;
-                    subtitleText.text = surviveLabel;
+                    subtitleText.text = L(GameplayKeys.Survive);
                     break;
 
                 case SurvivalLevelState.Clearing:
                     timerText.text = "00:00";
                     timerText.color = warningColor;
-                    subtitleText.text = string.Format(clearLabel, level.AliveCount);
+                    subtitleText.text = L(GameplayKeys.ClearCounter, level.AliveCount);
                     break;
             }
 
-            enemiesText.text = $"HOSTILES: {level.AliveCount}";
+            enemiesText.text = L(GameplayKeys.Hostiles, level.AliveCount);
 
             if (panelHint != null && panelGroup.alpha > 0f)
             {
                 bool failed = level.State == SurvivalLevelState.Failed;
-                panelHint.text = level.CanContinue ? string.Format(failed ? defeatHint : continueHint, level.ContinueKey.ToString().ToUpper()) : "";
+                panelHint.text = level.CanContinue ? L(failed ? GameplayKeys.RetryHint : GameplayKeys.ContinueHint, KeyName(level.ContinueKey)) : "";
                 // parpadeo suave del aviso de tecla
                 panelHint.alpha = 0.55f + 0.45f * Mathf.PingPong(Time.unscaledTime * 1.6f, 1f);
             }
@@ -93,15 +154,17 @@ namespace SudoKill9.Levels
 
         // ------------------------------------------------------------------ Eventos
 
-        private void Announce(string message)
+        private void Announce(string key, object arg)
         {
             if (announceRoutine != null) StopCoroutine(announceRoutine);
-            announceRoutine = StartCoroutine(AnnounceRoutine(message));
+            announceKey = key;
+            announceArg = arg;
+            announceRoutine = StartCoroutine(AnnounceRoutine());
         }
 
-        private IEnumerator AnnounceRoutine(string message)
+        private IEnumerator AnnounceRoutine()
         {
-            announceText.text = message;
+            announceText.text = L(announceKey, Args(announceArg));
             for (float t = 0f; t < announcementDuration; t += Time.unscaledDeltaTime)
             {
                 // entra rápido, parpadea, se desvanece al final
@@ -111,15 +174,20 @@ namespace SudoKill9.Levels
                 yield return null;
             }
             announceText.alpha = 0f;
+            announceKey = null;
         }
 
-        private void ShowCompleted() => ShowPanel(level.CompletedMessage, primaryGreen);
-        private void ShowFailed() => ShowPanel(defeatTitle, dangerColor);
+        private void ShowCompleted() => ShowPanel(level.CompletedMessageKey, level.LevelNumber, primaryGreen);
+        private void ShowFailed() => ShowPanel(GameplayKeys.DefeatTitle, null, dangerColor);
 
-        private void ShowPanel(string title, Color color)
+        private void ShowPanel(string key, object arg, Color color)
         {
+            if (announceRoutine != null) StopCoroutine(announceRoutine);
             announceText.alpha = 0f;
-            panelTitle.text = title;
+            announceKey = null;
+            panelKey = key;
+            panelArg = arg;
+            panelTitle.text = L(key, Args(arg));
             panelTitle.color = color;
             StartCoroutine(FadePanelIn());
         }
