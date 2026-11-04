@@ -42,7 +42,7 @@ namespace SudoKill9.UI.Inicio
 
         [Header("Transición")]
         [Tooltip("Nombre de la escena de gameplay que se carga al finalizar el video.")]
-        [SerializeField] private string targetSceneName = "Mapa_completo";
+        [SerializeField] private string targetSceneName = "Nivel_1";
 
         private RenderTexture _renderTexture;
         private bool _started;
@@ -198,7 +198,7 @@ namespace SudoKill9.UI.Inicio
 
             if (Application.CanStreamedLevelBeLoaded(targetSceneName))
             {
-                SceneManager.LoadScene(targetSceneName);
+                SceneFader.LoadScene(targetSceneName);
             }
             else
             {
