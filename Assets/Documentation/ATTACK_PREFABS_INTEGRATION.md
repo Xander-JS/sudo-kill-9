@@ -31,7 +31,7 @@ Se localizaron e integraron los 4 prefabs reales del paquete *Hovl Studio / Proc
 
 ### Archivos Creados
 - `Assets/_Project/Scripts/Combat/Widows/Windows_Combat/MagicFire0AereoController.cs`:
-  Controlador del proyectil aéreo Magic Fire 0, captura fija de posición, detección de esquive por área, detonación condicional, activación de BSOD (5s) e instanciación del tornado.
+  Controlador del proyectil aéreo Magic Fire 0, captura fija de posición, detección de esquive por área, detonación condicional con Explosión, daño (1.0) e instanciación del tornado RotatorPS2 (sin pantalla azul).
 - `Assets/_Project/Scripts/Combat/Widows/Windows_Combat/MagicFire1HomingController.cs`:
   Controlador del proyectil de persecución Magic Fire 1 con cinemática homing, limitador de giro angular (*turn rate*), detección de colisión con obstáculos y detonación tras 3 segundos.
 - `Assets/_Project/Scripts/Combat/Widows/Windows_Combat/RotatorPS2TornadoController.cs`:
@@ -45,13 +45,13 @@ Se localizaron e integraron los 4 prefabs reales del paquete *Hovl Studio / Proc
 - `Assets/_Project/Scripts/Combat/Widows/Windows_Combat/WindowsCommandAttacks.cs`:
   Reemplazo del antiguo rayo rígido Kamehameha por Magic Fire 1 y orquestación del Ataque 1 (Magic Fire 0). Mantenimiento estricto de la máquina de estados, compatibilidad con reflexión y limpieza de ataques.
 - `Assets/_Project/Scripts/UI/BSODGlitchEffect.cs`:
-  Soporte para duración configurable en `DispararBSOD(float duracion = 5.0f)` y `ActivarBSOD(float duracion = 5.0f)`, asegurando los 5 segundos exactos requeridos.
+  Soporte para duración configurable en `DispararBSOD(float duracion = 5.0f)` y `ActivarBSOD(float duracion = 5.0f)`, asegurando los 5 segundos exactos requeridos (activo al bajar del 15% de vida del jefe o tecla 3).
 - `Assets/_Project/Scripts/Editor/SetupCombatUIAndBossAbilities.cs`:
   Configuración automática de las referencias a los 4 prefabs reales de Hovl Studio en WindowsCommandAttacks.
 - `Assets/_Project/Scripts/Editor/SetupWindowsBoss.cs`:
   Ampliación de la suite de pruebas unitarias con Tests 18 al 22 para validación automatizada de prefabs, controladores y tiempos.
 - `Assets/_Project/Scenes/Experimento_K/prueba_Expe_K.unity`:
-  Actualización de la escena de pruebas con los componentes calibrados, prefabs vinculados por GUID y BSOD ajustado a 5.0s.
+  Actualización de la escena de pruebas con los componentes calibrados y prefabs vinculados por GUID.
 - `Assembly-CSharp.csproj`:
   Inclusión de los nuevos scripts de combate.
 
@@ -68,15 +68,15 @@ Se localizaron e integraron los 4 prefabs reales del paquete *Hovl Studio / Proc
 ### 3.2. Mecánica de Esquive
 - Mientras el efecto cae a `velocidadCaidaMagicFire0 = 16 m/s`, Linux puede correr, saltar o esquivar libremente.
 - Si Linux se aparta del punto registrado y supera el radio de impacto (`radioImpactoMagicFire0 = 3.2m`):
-  - **MISS:** El ataque finaliza al tocar el suelo. No hay daño, no se reproduce la explosión, no se activa el tornado ni se dispara la pantalla azul.
+  - **MISS:** El ataque finaliza al tocar el suelo. No hay daño, no se reproduce la explosión ni se activa el tornado.
 
 ### 3.3. Impacto y Consecuencias (HIT)
 - Si Linux se mantiene dentro del radio de impacto:
   - **HIT:**
     1. Se reproduce el prefab `Explosion` exactamente en el punto de contacto.
     2. Se aplica el daño configurado (`danoMagicFire0 = 1`) una única vez a través del sistema `IDamageable` / `PlayerHealth`.
-    3. Se activa la Pantalla Azul (BSOD) durante 5 segundos exactos.
-    4. Se instancia el prefab `RotatorPS2` centrado en Linux.
+    3. Se instancia el prefab `RotatorPS2` centrado en Linux contrayéndose durante 5 segundos.
+    *(Nota: La Pantalla Azul BSOD no se activa en este ataque, reservándose exclusivamente para la fase crítica < 15% HP o tecla 3).*
 
 ---
 

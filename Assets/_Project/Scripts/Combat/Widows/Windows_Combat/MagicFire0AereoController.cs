@@ -12,7 +12,6 @@ namespace SudoKill9.Combat
     ///    - Si Linux fue impactado (dentro de radioImpacto):
     ///        * Instancia prefab 'Explosion' en el punto de contacto.
     ///        * Aplica daño exactamente una vez a Linux.
-    ///        * Dispara la Pantalla Azul (BSOD) por exactamente 5 segundos.
     ///        * Instancia prefab 'RotatorPS2' centrado en Linux con contracción progresiva.
     /// </summary>
     public class MagicFire0AereoController : MonoBehaviour
@@ -35,9 +34,6 @@ namespace SudoKill9.Combat
         [SerializeField] private Vector3 escalaExplosion = new Vector3(1.5f, 1.5f, 1.5f);
 
         [Header("Efectos Secundarios en Acierto")]
-        [Tooltip("Duración de la Pantalla Azul (BSOD) en segundos.")]
-        [SerializeField] private float duracionBSOD = 5.0f;
-
         [Tooltip("Duración activa del tornado RotatorPS2 alrededor de Linux.")]
         [SerializeField] private float duracionRotatorPS2 = 5.0f;
 
@@ -72,7 +68,6 @@ namespace SudoKill9.Combat
             float velocidad = 16f,
             float radio = 3.2f,
             float danoAtaque = 1f,
-            float duracionPantallaAzul = 5f,
             float duracionTornado = 5f,
             Vector3? escalaTornado = null,
             Vector3? escalaExp = null,
@@ -89,7 +84,6 @@ namespace SudoKill9.Combat
             velocidadCaida = Mathf.Max(2f, velocidad);
             radioImpacto = Mathf.Max(0.5f, radio);
             dano = danoAtaque;
-            duracionBSOD = Mathf.Max(1f, duracionPantallaAzul);
             duracionRotatorPS2 = Mathf.Max(1f, duracionTornado);
 
             if (escalaTornado.HasValue) escalaRotatorPS2 = escalaTornado.Value;
@@ -159,10 +153,7 @@ namespace SudoKill9.Combat
                     }
                 }
 
-                // 3. Activar Pantalla Azul de la Muerte durante 5 segundos mediante el evento unificado
-                WindowsCommandAttacks.NotificarBSOD(duracionBSOD);
-
-                // 4. Instanciar RotatorPS2 centrado en Linux (limpiando tornados previos para evitar superposición)
+                // 3. Instanciar RotatorPS2 centrado en Linux (limpiando tornados previos para evitar superposición)
                 if (prefabRotatorPS2 != null && targetLinux != null)
                 {
                     RotatorPS2TornadoController[] tornadosPrevios = UnityEngine.Object.FindObjectsByType<RotatorPS2TornadoController>(FindObjectsSortMode.None);

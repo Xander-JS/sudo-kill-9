@@ -114,7 +114,7 @@ public class WindowsCommandAttacks : MonoBehaviour
     // 4. ATAQUE 1: MAGIC FIRE 0 + EXPLOSION + ROTATORPS2                        //
     // ========================================================================= //
 
-    [Header("4. Ataque 1: Magic Fire 0 (Aéreo + Esquive + BSOD + Tornado)")]
+    [Header("4. Ataque 1: Magic Fire 0 (Aéreo + Esquive + Tornado)")]
     [Tooltip("Habilita el ataque aéreo orbital telegrafiado.")]
     [SerializeField] private bool magicFire0Habilitado = true;
 
@@ -135,9 +135,6 @@ public class WindowsCommandAttacks : MonoBehaviour
 
     [Tooltip("Daño infligido por Magic Fire 0 al acertar.")]
     [SerializeField] private float danoMagicFire0 = 1.0f;
-
-    [Tooltip("Duración de la Pantalla Azul (BSOD) en segundos activada por el impacto.")]
-    [SerializeField] private float duracionBSODMagicFire0 = 5.0f;
 
     [Tooltip("Duración del tornado RotatorPS2 alrededor de Linux.")]
     [SerializeField] private float duracionRotatorPS2 = 5.0f;
@@ -458,7 +455,6 @@ public class WindowsCommandAttacks : MonoBehaviour
                 velocidadCaidaMagicFire0,
                 radioImpactoMagicFire0,
                 danoMagicFire0,
-                duracionBSODMagicFire0,
                 duracionRotatorPS2,
                 escalaRotatorPS2,
                 escalaExplosion,
