@@ -8,6 +8,7 @@ using UnityEditor.SceneManagement;
 using TMPro;
 using SudoKill9.UI;
 using SudoKill9.UI.Inicio;
+using SudoKill9.Combat;
 
 namespace SudoKill9.EditorTools
 {
@@ -247,10 +248,10 @@ namespace SudoKill9.EditorTools
 
         private static void ConfigurarJefeWindows(AnimatorController ctrl)
         {
-            GameObject windowsGO = GameObject.Find("windows");
+            GameObject windowsGO = GameObject.Find("windows_opt") ?? GameObject.Find("windows");
             if (windowsGO == null)
             {
-                Debug.LogError("[SetupCombatUI] No se encontró el GameObject 'windows' en la escena.");
+                Debug.LogError("[SetupCombatUI] No se encontró el GameObject 'windows_opt' (ni 'windows') en la escena.");
                 return;
             }
 
@@ -287,11 +288,13 @@ namespace SudoKill9.EditorTools
             var p0 = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Procedural fire/Prefabs/Magic fire 0.prefab");
             var p1 = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Procedural fire/Prefabs/Magic fire 1.prefab");
             var pRot = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Procedural fire/Prefabs/RotatorPS2.prefab");
+            var pRot1 = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Procedural fire/Prefabs/RotatorPS1.prefab");
             var pExp = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Procedural fire/Prefabs/Explosion.prefab");
 
             if (p0 != null && soCmd.FindProperty("prefabMagicFire0") != null) soCmd.FindProperty("prefabMagicFire0").objectReferenceValue = p0;
             if (p1 != null && soCmd.FindProperty("prefabMagicFire1") != null) soCmd.FindProperty("prefabMagicFire1").objectReferenceValue = p1;
             if (pRot != null && soCmd.FindProperty("prefabRotatorPS2") != null) soCmd.FindProperty("prefabRotatorPS2").objectReferenceValue = pRot;
+            if (pRot1 != null && soCmd.FindProperty("prefabRotatorPS1") != null) soCmd.FindProperty("prefabRotatorPS1").objectReferenceValue = pRot1;
             if (pExp != null && soCmd.FindProperty("prefabExplosion") != null) soCmd.FindProperty("prefabExplosion").objectReferenceValue = pExp;
             soCmd.ApplyModifiedPropertiesWithoutUndo();
 
@@ -309,10 +312,16 @@ namespace SudoKill9.EditorTools
             }
             soBoss.ApplyModifiedPropertiesWithoutUndo();
 
+            // 4. WindowsHeadHealthBar (Barra de salud sobre la cabeza en World Space con 2 vidas)
+            WindowsHeadHealthBar headBar = windowsGO.GetComponent<WindowsHeadHealthBar>();
+            if (headBar == null) headBar = windowsGO.AddComponent<WindowsHeadHealthBar>();
+            headBar.ConfigurarParaBoss(bossAI);
+
             EditorUtility.SetDirty(windowsGO);
             EditorUtility.SetDirty(bossAI);
             EditorUtility.SetDirty(cmdAttacks);
-            Debug.Log("<color=green>[SetupCombatUI]</color> Jefe 'windows' configurado con WindowsBossAI, WindowsCommandAttacks y prefabs de Hovl Studio.");
+            EditorUtility.SetDirty(headBar);
+            Debug.Log("<color=green>[SetupCombatUI]</color> Jefe 'windows' configurado con WindowsBossAI, WindowsCommandAttacks, WindowsHeadHealthBar y prefabs de Hovl Studio.");
         }
 
         private static void ConfigurarCanvasCombate()
@@ -479,6 +488,8 @@ namespace SudoKill9.EditorTools
             so.FindProperty("bossSubtitleText").objectReferenceValue = subtitle;
             so.FindProperty("bossHealthNumberText").objectReferenceValue = hpNumber;
             so.ApplyModifiedPropertiesWithoutUndo();
+
+            bossGO.SetActive(hud.MostrarBarraSuperior2D);
         }
 
         private static void ConstruirBarraTux(Transform parent, TMP_FontAsset font, Sprite panelSprite, CombatHUDManager hud)
@@ -564,7 +575,7 @@ namespace SudoKill9.EditorTools
             rt.anchorMax = new Vector2(1f, 1f);
             rt.pivot = new Vector2(1f, 1f);
             rt.anchoredPosition = new Vector2(-25f, -25f);
-            rt.sizeDelta = new Vector2(460f, 155f);
+            rt.sizeDelta = new Vector2(560f, 185f);
 
             Image panelImg = ObtenerOAgregarComponente<Image>(termGO);
             if (panelSprite != null)
@@ -572,35 +583,40 @@ namespace SudoKill9.EditorTools
                 panelImg.sprite = panelSprite;
                 panelImg.type = Image.Type.Sliced;
             }
-            panelImg.color = new Color(0.04f, 0.06f, 0.05f, 0.88f); // Terminal oscuro #0A0F0D
+            panelImg.color = new Color(0.04f, 0.06f, 0.05f, 0.90f); // Terminal oscuro #0A0F0D
+
+            CanvasGroup cg = ObtenerOAgregarComponente<CanvasGroup>(termGO);
+            cg.alpha = 1f;
 
             // Título Terminal
-            TMP_Text title = ObtenerOCrearTexto(termGO.transform, "TerminalTitle", font, 12, FontStyles.Bold, TextAlignmentOptions.Left);
+            TMP_Text title = ObtenerOCrearTexto(termGO.transform, "TerminalTitle", font, 16, FontStyles.Bold, TextAlignmentOptions.Left);
             RectTransform rtTitle = title.rectTransform;
             rtTitle.anchorMin = new Vector2(0f, 1f);
             rtTitle.anchorMax = new Vector2(1f, 1f);
             rtTitle.pivot = new Vector2(0f, 1f);
-            rtTitle.anchoredPosition = new Vector2(14f, -6f);
-            rtTitle.sizeDelta = new Vector2(-28f, 18f);
+            rtTitle.anchoredPosition = new Vector2(22f, -8f);
+            rtTitle.sizeDelta = new Vector2(-44f, 24f);
             title.text = "[CMD] C:\\Windows\\System32\\cmd.exe";
             title.color = new Color(0.08f, 0.88f, 0.96f);
 
             // Contenido Terminal
-            TMP_Text content = ObtenerOCrearTexto(termGO.transform, "TerminalContent", font, 10, FontStyles.Normal, TextAlignmentOptions.TopLeft);
+            TMP_Text content = ObtenerOCrearTexto(termGO.transform, "TerminalContent", font, 15, FontStyles.Normal, TextAlignmentOptions.TopLeft);
             RectTransform rtContent = content.rectTransform;
             rtContent.anchorMin = Vector2.zero;
             rtContent.anchorMax = Vector2.one;
-            rtContent.offsetMin = new Vector2(14f, 10f);
-            rtContent.offsetMax = new Vector2(-14f, -24f);
-            content.lineSpacing = -10f;
+            rtContent.offsetMin = new Vector2(22f, 14f);
+            rtContent.offsetMax = new Vector2(-22f, -38f);
+            content.lineSpacing = 3.5f;
             content.text = "> Inicializando terminal...";
-            content.color = new Color(0.85f, 0.95f, 0.90f);
+            content.color = new Color(0.90f, 0.98f, 0.92f);
 
             // Asignar en HUD
             SerializedObject so = new SerializedObject(hud);
             so.FindProperty("terminalContainer").objectReferenceValue = termGO;
             so.FindProperty("terminalTitleText").objectReferenceValue = title;
             so.FindProperty("terminalContentText").objectReferenceValue = content;
+            SerializedProperty cgProp = so.FindProperty("terminalCanvasGroup");
+            if (cgProp != null) cgProp.objectReferenceValue = cg;
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
@@ -826,8 +842,199 @@ namespace SudoKill9.EditorTools
 
         private static void EjecutarPruebasVerificacion()
         {
-            // Ejecutar la verificación oficial de combate de SetupWindowsBoss
             SetupWindowsBoss.EjecutarVerificacionAutomatica();
+            EjecutarPruebasCalidadIntegral();
+        }
+
+        [MenuItem("Tools/SudoKill9/Ejecutar Pruebas Integrales de Combate y UI")]
+        public static string EjecutarPruebasCalidadIntegral()
+        {
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            sb.AppendLine("=== INFORME DE VERIFICACIÓN INTEGRAL DE COMBATE, DOBLE VIDA Y UI ===");
+            sb.AppendLine($"Timestamp: {System.DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+            bool exitoTotal = true;
+
+            // -------------------------------------------------------------
+            // SECCIÓN 1: ATAQUE ROTATORPS1 (TRAMPA ESTÁTICA Y CONTENCIÓN)
+            // -------------------------------------------------------------
+            sb.AppendLine("\n--- 1. VERIFICACIÓN DE ATAQUE ROTATORPS1 Y TRAMPA ESTÁTICA ---");
+            
+            // 1.1 Verificar prefab RotatorPS1 en disco
+            GameObject prefabRotator = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Procedural fire/Prefabs/RotatorPS1.prefab");
+            bool prefabOk = prefabRotator != null;
+            sb.AppendLine($"[TEST 1.1] Prefab RotatorPS1 cargado en disco: {(prefabOk ? "PASS" : "FAIL")}");
+            exitoTotal &= prefabOk;
+
+            // 1.2 Verificar WindowsCommandAttacks fields y defaults
+            GameObject dummyCmdGO = new GameObject("Dummy_Cmd_Test");
+            try
+            {
+                WindowsCommandAttacks cmd = dummyCmdGO.AddComponent<WindowsCommandAttacks>();
+                bool durOk = cmd.DuracionRotatorPS1 > 0f && cmd.DuracionRotatorPS1 <= 5f;
+                sb.AppendLine($"[TEST 1.2] WindowsCommandAttacks.DuracionRotatorPS1 configurable ({cmd.DuracionRotatorPS1}s): {(durOk ? "PASS" : "FAIL")}");
+                exitoTotal &= durOk;
+            }
+            finally
+            {
+                Object.DestroyImmediate(dummyCmdGO);
+            }
+
+            // 1.3 Verificar RotatorPS1TrapController (estática + contención perimetral)
+            GameObject dummyTrapGO = new GameObject("Dummy_Trap_Test");
+            GameObject dummyPlayerGO = new GameObject("Dummy_Player_Test");
+            try
+            {
+                Vector3 puntoImpacto = new Vector3(15f, 0f, 25f);
+                dummyTrapGO.transform.position = puntoImpacto;
+                RotatorPS1TrapController trap = dummyTrapGO.AddComponent<RotatorPS1TrapController>();
+                
+                dummyPlayerGO.transform.position = puntoImpacto + new Vector3(1f, 0f, 0f);
+                trap.InicializarTrampa(dummyPlayerGO.transform, duracion: 2.5f, atraparJugador: true);
+
+                // Verificar que no se mueva hacia el jugador
+                dummyPlayerGO.transform.position = new Vector3(100f, 0f, 100f);
+                bool posEstaticaOk = Vector3.Distance(dummyTrapGO.transform.position, puntoImpacto) < 0.001f;
+                sb.AppendLine($"[TEST 1.3] RotatorPS1 permanece estrictamente estático en el punto de impacto: {(posEstaticaOk ? "PASS" : "FAIL")}");
+                exitoTotal &= posEstaticaOk;
+
+                // Verificar contención perimetral
+                float radio = trap.RadioConfinamiento;
+                bool radioOk = radio >= 2f && radio <= 5f;
+                sb.AppendLine($"[TEST 1.4] RotatorPS1 radio de contención circular calibrado ({radio}m): {(radioOk ? "PASS" : "FAIL")}");
+                exitoTotal &= radioOk;
+
+                // Verificar aplicación del límite de confinamiento (clamp sin congelar)
+                dummyPlayerGO.transform.position = puntoImpacto + new Vector3(50f, 0f, 0f);
+                trap.AplicarLimiteConfinamiento(dummyPlayerGO.transform);
+                float distTrasClamp = Vector3.Distance(new Vector3(dummyPlayerGO.transform.position.x, 0f, dummyPlayerGO.transform.position.z), new Vector3(puntoImpacto.x, 0f, puntoImpacto.z));
+                bool clampOk = distTrasClamp <= (radio + 0.1f);
+                sb.AppendLine($"[TEST 1.5] RotatorPS1 confina al jugador dentro del perímetro (dist={distTrasClamp:F2}m <= {radio}m): {(clampOk ? "PASS" : "FAIL")}");
+                exitoTotal &= clampOk;
+
+                // Verificar que no existen colliders físicos que bloqueen balas del jugador o la cámara
+                Collider[] colliders = dummyTrapGO.GetComponentsInChildren<Collider>();
+                bool sinCollidersSolidos = true;
+                for (int c = 0; c < colliders.Length; c++)
+                {
+                    if (colliders[c] != null && colliders[c].enabled && !colliders[c].isTrigger)
+                    {
+                        sinCollidersSolidos = false;
+                        break;
+                    }
+                }
+                sb.AppendLine($"[TEST 1.6] RotatorPS1 sin barreras sólidas que bloqueen balas o cámara: {(sinCollidersSolidos ? "PASS" : "FAIL")}");
+                exitoTotal &= sinCollidersSolidos;
+            }
+            finally
+            {
+                Object.DestroyImmediate(dummyTrapGO);
+                Object.DestroyImmediate(dummyPlayerGO);
+            }
+
+            // -------------------------------------------------------------
+            // SECCIÓN 2: SISTEMA DE DOBLE VIDA Y BARRA SOBRE LA CABEZA
+            // -------------------------------------------------------------
+            sb.AppendLine("\n--- 2. VERIFICACIÓN DE SISTEMA DE DOS VIDAS Y BARRA HEAD SPACE ---");
+
+            GameObject dummyBossGO = new GameObject("Dummy_Boss_TwoLives");
+            try
+            {
+                WindowsBossAI bossAI = dummyBossGO.AddComponent<WindowsBossAI>();
+                bossAI.GarantizarComponentesFisicos();
+
+                bool initVidasOk = bossAI.VidaActual == 1 && bossAI.VidasTotales == 2 && bossAI.CurrentHealth == 500f;
+                sb.AppendLine($"[TEST 2.1] Inicialización de Doble Vida (Vida {bossAI.VidaActual}/{bossAI.VidasTotales}, HP: {bossAI.CurrentHealth}/{bossAI.MaxHealth}): {(initVidasOk ? "PASS" : "FAIL")}");
+                exitoTotal &= initVidasOk;
+
+                // Recibir 500 de daño: debe agotar la vida 1 y transicionar a la vida 2 al 100%
+                bossAI.TakeDamage(500f);
+                bool transicionOk = bossAI.VidaActual == 2 && bossAI.CurrentHealth == 500f && !bossAI.IsDead;
+                sb.AppendLine($"[TEST 2.2] Transición inmediata a Vida 2 al 100% sin morir (Vida: {bossAI.VidaActual}/{bossAI.VidasTotales}, HP: {bossAI.CurrentHealth}, IsDead: {bossAI.IsDead}): {(transicionOk ? "PASS" : "FAIL")}");
+                exitoTotal &= transicionOk;
+
+                // Recibir 250 de daño en vida 2: debe bajar a 250 HP y seguir vivo
+                bossAI.TakeDamage(250f);
+                bool danoVida2Ok = bossAI.VidaActual == 2 && bossAI.CurrentHealth == 250f && !bossAI.IsDead;
+                sb.AppendLine($"[TEST 2.3] Daño progresivo en Vida 2 (HP: {bossAI.CurrentHealth}/500, IsDead: {bossAI.IsDead}): {(danoVida2Ok ? "PASS" : "FAIL")}");
+                exitoTotal &= danoVida2Ok;
+
+                // Recibir 250 de daño final: agota vida 2 y muere definitivamente
+                bossAI.TakeDamage(250f);
+                bool muerteOk = bossAI.CurrentHealth == 0f && bossAI.IsDead;
+                sb.AppendLine($"[TEST 2.4] Muerte definitiva únicamente al agotar Vida 2 (HP: {bossAI.CurrentHealth}, IsDead: {bossAI.IsDead}): {(muerteOk ? "PASS" : "FAIL")}");
+                exitoTotal &= muerteOk;
+
+                // 2.5 Verificar WindowsHeadHealthBar
+                WindowsHeadHealthBar headBar = dummyBossGO.AddComponent<WindowsHeadHealthBar>();
+                headBar.ConfigurarParaBoss(bossAI);
+                bool headBarOk = headBar.ColorVida1 != headBar.ColorVida2 && headBar.OffsetSobreCabeza.y > 0.2f;
+                sb.AppendLine($"[TEST 2.5] WindowsHeadHealthBar colores diferenciados y offset vertical sobre cabeza: {(headBarOk ? "PASS" : "FAIL")}");
+                exitoTotal &= headBarOk;
+
+                // 2.6 Verificar Indicadores Visuales Gemelos de Vida (Life1Dot y Life2Dot)
+                bool dotsOk = headBar.Life1Dot != null && headBar.Life2Dot != null;
+                sb.AppendLine($"[TEST 2.6] WindowsHeadHealthBar indicadores gemelos de vida creados: {(dotsOk ? "PASS" : "FAIL")}");
+                exitoTotal &= dotsOk;
+
+                // 2.7 Verificar escala en mundo desacoplada del jefe (1.9m de ancho, escala 0.005)
+                bool escalaOk = Mathf.Approximately(headBar.transform.localScale.x, 0.005f) && headBar.transform.parent == null;
+                sb.AppendLine($"[TEST 2.7] WindowsHeadHealthBar desacoplada de la escala del modelo (scale={headBar.transform.localScale.x}): {(escalaOk ? "PASS" : "FAIL")}");
+                exitoTotal &= escalaOk;
+            }
+            finally
+            {
+                Object.DestroyImmediate(dummyBossGO);
+            }
+
+            // -------------------------------------------------------------
+            // SECCIÓN 3: TARJETA DE MENSAJES CMD (CMDTerminalHUD)
+            // -------------------------------------------------------------
+            sb.AppendLine("\n--- 3. VERIFICACIÓN DE TARJETA DE MENSAJES CMD (CMDTerminalHUD) ---");
+
+            GameObject dummyCanvas = new GameObject("Dummy_Canvas_UI", typeof(RectTransform));
+            try
+            {
+                CombatHUDManager hud = dummyCanvas.AddComponent<CombatHUDManager>();
+                GameObject termGO = new GameObject("CMDTerminalHUD", typeof(RectTransform));
+                termGO.transform.SetParent(dummyCanvas.transform, false);
+                RectTransform rtTerm = termGO.GetComponent<RectTransform>();
+                rtTerm.sizeDelta = new Vector2(560f, 195f);
+
+                CanvasGroup cg = termGO.AddComponent<CanvasGroup>();
+                cg.alpha = 1f;
+
+                bool tamanoCardOk = rtTerm.sizeDelta.x >= 500f && rtTerm.sizeDelta.y >= 180f;
+                sb.AppendLine($"[TEST 3.1] Dimensiones expandidas de CMDTerminalHUD ({rtTerm.sizeDelta.x}x{rtTerm.sizeDelta.y}): {(tamanoCardOk ? "PASS" : "FAIL")}");
+                exitoTotal &= tamanoCardOk;
+
+                bool typoOk = hud.TamanoFuenteTitulo >= 15f && hud.TamanoFuenteMensajes >= 14f && hud.EspaciadoLineasMensajes >= 2.5f;
+                sb.AppendLine($"[TEST 3.2] Tipografía y espaciado de líneas (Título={hud.TamanoFuenteTitulo}pt, Mensajes={hud.TamanoFuenteMensajes}pt, Espaciado={hud.EspaciadoLineasMensajes}): {(typoOk ? "PASS" : "FAIL")}");
+                exitoTotal &= typoOk;
+
+                bool barraTopOculta = !hud.MostrarBarraSuperior2D;
+                sb.AppendLine($"[TEST 3.3] Prioridad a barra 3D sobre la cabeza (mostrarBarraSuperior2D=false): {(barraTopOculta ? "PASS" : "FAIL")}");
+                exitoTotal &= barraTopOculta;
+            }
+            finally
+            {
+                Object.DestroyImmediate(dummyCanvas);
+            }
+
+            sb.AppendLine($"\n=== RESULTADO FINAL: {(exitoTotal ? "TODOS LOS TESTS APROBADOS (PASS)" : "FALLOS DETECTADOS (FAIL)")} ===");
+
+            string reporte = sb.ToString();
+            Debug.Log($"<color={(exitoTotal ? "green" : "red")}>[PruebasIntegrales]</color>\n{reporte}");
+
+            try
+            {
+                System.IO.File.WriteAllText("Logs/CombatVerificationReport.txt", reporte);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"No se pudo escribir en Logs/CombatVerificationReport.txt: {ex.Message}");
+            }
+
+            return reporte;
         }
     }
 }

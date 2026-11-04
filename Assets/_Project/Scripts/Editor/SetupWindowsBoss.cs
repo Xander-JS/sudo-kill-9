@@ -58,7 +58,7 @@ namespace SudoKill9.EditorTools
             }
 
             // 2. Verificar Windows GameObject, Colisión y Rigidbody
-            GameObject windowsGO = GameObject.Find("windows");
+            GameObject windowsGO = GameObject.Find("windows_opt") ?? GameObject.Find("windows");
             if (windowsGO != null)
             {
                 CapsuleCollider col = windowsGO.GetComponent<CapsuleCollider>();
@@ -789,7 +789,7 @@ namespace SudoKill9.EditorTools
 
         private static void WireSceneIfOpen(bool silent, AnimatorController ctrl = null)
         {
-            GameObject windowsGO = GameObject.Find("windows");
+            GameObject windowsGO = GameObject.Find("windows_opt") ?? GameObject.Find("windows");
             if (windowsGO == null) return;
 
             if (ctrl == null)
