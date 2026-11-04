@@ -10,8 +10,8 @@ using UnityEngine.UI;
 namespace SudoKill9.Levels
 {
     /// <summary>
-    /// HUD del nivel de supervivencia: temporizador, contador de enemigos, avisos de horda y el panel
-    /// modal de nivel completado / derrota. Construye su propio Canvas en Awake (no requiere prefab)
+    /// HUD del nivel de supervivencia: temporizador con barra de progreso, vida de Linux (celdas pixel),
+    /// contador de enemigos, avisos de horda y el panel modal de nivel completado / derrota. Construye su propio Canvas en Awake (no requiere prefab)
     /// con el estilo del proyecto: TextMeshPro en verde primario sobre fondo oscuro.
     /// Todos los textos salen de la String Table "Gameplay" (ver <see cref="GameplayKeys"/>) y se
     /// recargan al cambiar <see cref="LocalizationSettings.SelectedLocale"/>, sin reiniciar la escena.
@@ -31,11 +31,28 @@ namespace SudoKill9.Levels
         [Header("Avisos")]
         [SerializeField] private float announcementDuration = 2.2f;
 
+        [Header("Vida de Linux")]
+        [SerializeField] private Color emptyCellColor = new Color(0.12f, 0.16f, 0.14f, 1f);
+        [Tooltip("Segundos que el panel de vida destella en rojo al recibir un golpe.")]
+        [SerializeField] private float hitFlashDuration = 0.35f;
+
         private SurvivalLevelController level;
         private TMP_Text timerText, subtitleText, enemiesText, announceText;
         private TMP_Text panelTitle, panelHint;
         private CanvasGroup panelGroup;
         private Coroutine announceRoutine;
+
+        // Progreso del nivel
+        private RectTransform progressFill;
+        private Image progressFillImage;
+        private TMP_Text progressText;
+
+        // Vida de Linux
+        private RectTransform healthCellsRoot;
+        private Image healthBox;
+        private TMP_Text healthText;
+        private readonly List<Image> healthCells = new List<Image>();
+        private float lastHealth = -1f, healthFlashTimer;
 
         // Localización: tabla del locale activo + textos "vivos" que hay que re-traducir al cambiar de idioma.
         private StringTable table;
@@ -56,7 +73,15 @@ namespace SudoKill9.Levels
             level.onLevelCompleted.AddListener(ShowCompleted);
             level.onLevelFailed.AddListener(ShowFailed);
             LocalizationSettings.SelectedLocaleChanged += OnLocaleChanged;
+            LinuxCombatIK.OnPlayerHealthChanged += OnPlayerHealthChanged;
             LoadTable();
+        }
+
+        private void Start()
+        {
+            // Valor inicial: el evento de LinuxCombatIK puede haberse disparado antes de suscribirnos.
+            var ik = FindFirstObjectByType<LinuxCombatIK>();
+            if (ik != null) OnPlayerHealthChanged(ik.CurrentHealth, ik.MaxHealth);
         }
 
         private void OnDisable()
@@ -65,6 +90,7 @@ namespace SudoKill9.Levels
             level.onLevelCompleted.RemoveListener(ShowCompleted);
             level.onLevelFailed.RemoveListener(ShowFailed);
             LocalizationSettings.SelectedLocaleChanged -= OnLocaleChanged;
+            LinuxCombatIK.OnPlayerHealthChanged -= OnPlayerHealthChanged;
         }
 
         // ------------------------------------------------------------------ Localización
@@ -143,6 +169,15 @@ namespace SudoKill9.Levels
 
             enemiesText.text = L(GameplayKeys.Hostiles, level.AliveCount);
 
+            UpdateProgress();
+
+            if (healthFlashTimer > 0f)
+            {
+                healthFlashTimer -= Time.unscaledDeltaTime;
+                float k = Mathf.Clamp01(healthFlashTimer / hitFlashDuration);
+                healthBox.color = Color.Lerp(panelBackground, new Color(dangerColor.r, dangerColor.g, dangerColor.b, panelBackground.a), k);
+            }
+
             if (panelHint != null && panelGroup.alpha > 0f)
             {
                 bool failed = level.State == SurvivalLevelState.Failed;
@@ -150,6 +185,64 @@ namespace SudoKill9.Levels
                 // parpadeo suave del aviso de tecla
                 panelHint.alpha = 0.55f + 0.45f * Mathf.PingPong(Time.unscaledTime * 1.6f, 1f);
             }
+        }
+
+        // ------------------------------------------------------------------ Progreso y vida
+
+        private void UpdateProgress()
+        {
+            float p = level.State switch
+            {
+                SurvivalLevelState.Starting => 0f,
+                SurvivalLevelState.Running => level.Progress,
+                _ => 1f // Clearing / Completed (y Failed muestra hasta dónde llegó, congelado abajo)
+            };
+            if (level.State == SurvivalLevelState.Failed) p = level.Progress;
+
+            progressFill.anchorMax = new Vector2(p, 1f);
+            progressFillImage.color = timerText.color;
+            progressText.text = $"{Mathf.FloorToInt(p * 100f)}%";
+        }
+
+        /// <summary>Recibe (vida actual, vida máxima) de LinuxCombatIK, que reenvía PlayerHealth.OnHealthChanged.</summary>
+        private void OnPlayerHealthChanged(float current, float max)
+        {
+            int cells = Mathf.Clamp(Mathf.RoundToInt(max), 1, 20);
+            if (cells != healthCells.Count) BuildHealthCells(cells);
+
+            float ratio = max > 0f ? current / max : 0f;
+            Color full = ratio <= 0.3f ? dangerColor : ratio <= 0.6f ? warningColor : primaryGreen;
+            // Si la vida no es en corazones (fallback de 100 HP) cada celda representa una fracción.
+            float perCell = max / cells;
+            for (int i = 0; i < healthCells.Count; i++)
+                healthCells[i].color = current >= (i + 1) * perCell - 0.001f ? full : emptyCellColor;
+
+            healthText.text = $"{Mathf.CeilToInt(current)}/{Mathf.RoundToInt(max)}";
+            healthText.color = full;
+
+            if (lastHealth >= 0f && current < lastHealth) healthFlashTimer = hitFlashDuration;
+            lastHealth = current;
+        }
+
+        private void BuildHealthCells(int count)
+        {
+            foreach (var c in healthCells) if (c != null) Destroy(c.gameObject);
+            healthCells.Clear();
+
+            // Paso fijo de 32 px hasta 15 celdas; con más se encogen para que la fila no pase de MaxCellsRowWidth
+            // (a 1920x1080 de referencia el recuadro queda lejos del temporizador centrado, también en 4:3).
+            const float MaxCellsRowWidth = 480f;
+            float step = Mathf.Min(32f, MaxCellsRowWidth / count);
+            float size = Mathf.Round(step * 0.8f);
+            for (int i = 0; i < count; i++)
+            {
+                var cell = CreateImage(healthCellsRoot, $"Cell_{i}", emptyCellColor);
+                SetAnchors(cell, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(i * step, 0f), new Vector2(size, size), new Vector2(0f, 0.5f));
+                healthCells.Add(cell.GetComponent<Image>());
+            }
+            // El recuadro crece con la fila (40 px = márgenes izquierdo y derecho).
+            var box = (RectTransform)healthBox.transform;
+            box.sizeDelta = new Vector2(Mathf.Max(260f, 40f + (count - 1) * step + size), box.sizeDelta.y);
         }
 
         // ------------------------------------------------------------------ Eventos
@@ -228,6 +321,36 @@ namespace SudoKill9.Levels
             SetAnchors(timerText.rectTransform, new Vector2(0f, 0.35f), Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
             subtitleText = CreateText(timerBox, "Subtitle", 22f, primaryGreen);
             SetAnchors(subtitleText.rectTransform, Vector2.zero, new Vector2(1f, 0.38f), Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+
+            // Barra de progreso del nivel (bajo el temporizador)
+            var progressBox = CreateImage(root, "ProgressBar", panelBackground);
+            SetAnchors(progressBox, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -156f), new Vector2(340f, 26f), new Vector2(0.5f, 1f));
+            AddOutline(progressBox.gameObject);
+            progressFill = CreateImage(progressBox, "Fill", primaryGreen);
+            progressFillImage = progressFill.GetComponent<Image>();
+            SetAnchors(progressFill, Vector2.zero, new Vector2(0f, 1f), Vector2.zero, Vector2.zero, new Vector2(0f, 0.5f));
+            progressFill.offsetMin = new Vector2(3f, 3f);
+            progressFill.offsetMax = new Vector2(-3f, -3f);
+            progressText = CreateText(progressBox, "Percent", 18f, Color.white);
+            SetAnchors(progressText.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+            progressText.outlineWidth = 0.25f;
+            progressText.outlineColor = new Color32(0, 0, 0, 255);
+
+            // Vida de Linux (arriba a la izquierda)
+            var healthRT = CreateImage(root, "PlayerHealth", panelBackground);
+            healthBox = healthRT.GetComponent<Image>();
+            SetAnchors(healthRT, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(32f, -32f), new Vector2(260f, 84f), new Vector2(0f, 1f));
+            AddOutline(healthRT.gameObject);
+            var healthLabel = CreateText(healthRT, "Label", 20f, primaryGreen);
+            healthLabel.text = "LINUX";
+            healthLabel.alignment = TextAlignmentOptions.Left;
+            SetAnchors(healthLabel.rectTransform, new Vector2(0f, 0.55f), Vector2.one, new Vector2(20f, 0f), new Vector2(-40f, 0f), new Vector2(0f, 0.5f));
+            healthText = CreateText(healthRT, "Value", 20f, primaryGreen);
+            healthText.alignment = TextAlignmentOptions.Right;
+            SetAnchors(healthText.rectTransform, new Vector2(0f, 0.55f), Vector2.one, new Vector2(-20f, 0f), new Vector2(-40f, 0f), new Vector2(1f, 0.5f));
+            healthCellsRoot = new GameObject("Cells", typeof(RectTransform)).GetComponent<RectTransform>();
+            healthCellsRoot.SetParent(healthRT, false);
+            SetAnchors(healthCellsRoot, new Vector2(0f, 0f), new Vector2(1f, 0.55f), new Vector2(20f, 4f), new Vector2(-40f, -8f), new Vector2(0f, 0.5f));
 
             // Contador de enemigos (arriba a la derecha)
             enemiesText = CreateText(root, "Hostiles", 26f, primaryGreen);
