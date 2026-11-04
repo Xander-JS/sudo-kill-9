@@ -238,18 +238,18 @@ namespace SudoKill9.EditorTools
         }
 
         /// <summary>
-        /// Nivel 1 (105 s): solo Virus y Espía. Apariciones sueltas y espaciadas; en los últimos 30 s
+        /// Nivel 1 (40 s): solo Virus y Espía. Apariciones sueltas; en los últimos 12 s
         /// sube la frecuencia y llegan patrullas de Virus con Espías cubriendo desde atrás.
         /// </summary>
         private static void ConfigureLevel1(SerializedObject so)
         {
-            const float duration = 105f;
-            float final = 1f - 30f / duration; // inicio del tramo final (≈0.71)
+            const float duration = 40f, finalStretch = 12f;
+            float final = 1f - finalStretch / duration; // inicio del tramo final (0.7)
             GameObject virus = Enemy("virus_opt"), espia = Enemy("espia_opt");
 
             so.FindProperty("levelNumber").intValue = 1;
             so.FindProperty("duration").floatValue = duration;
-            so.FindProperty("finalStretchSeconds").floatValue = 30f;
+            so.FindProperty("finalStretchSeconds").floatValue = finalStretch;
             so.FindProperty("victoryCondition").enumValueIndex = (int)VictoryCondition.SurviveTimer;
             so.FindProperty("completedMessageKey").stringValue = GameplayKeys.LevelCompleted;
             so.FindProperty("nextSceneName").stringValue = "Nivel_2";
@@ -258,32 +258,32 @@ namespace SudoKill9.EditorTools
                 ("Virus", virus, 3f, 0f, SpawnPlacement.AroundPlayer),
                 ("Espia", espia, 1.5f, 0.15f, SpawnPlacement.AroundPlayer));
 
-            so.FindProperty("spawnInterval").animationCurveValue = Linear((0f, 7f), (0.4f, 5f), (final, 4f), (final + 0.01f, 2.2f), (1f, 1.2f));
+            so.FindProperty("spawnInterval").animationCurveValue = Linear((0f, 3.5f), (0.4f, 2.8f), (final, 2.2f), (final + 0.01f, 1.6f), (1f, 1f));
             so.FindProperty("batchSize").animationCurveValue = Linear((0f, 1f), (final, 1f), (final + 0.01f, 2f), (1f, 3f));
             so.FindProperty("maxAlive").animationCurveValue = Linear((0f, 3f), (final, 6f), (1f, 10f));
 
             SetWaves(so.FindProperty("scriptedWaves"),
-                Wave("Virus patrol", 30f, SpawnPlacement.AroundPlayer, 1, GameplayKeys.WaveVirusPatrol,
+                Wave("Virus patrol", 26f, SpawnPlacement.AroundPlayer, 1, GameplayKeys.WaveVirusPatrol,
                     (virus, 3, 0f), (espia, 1, 6f)),
-                Wave("Pincer patrol", 20f, SpawnPlacement.AroundPlayer, 2, GameplayKeys.WaveMultiplePatrols,
+                Wave("Pincer patrol", 16f, SpawnPlacement.AroundPlayer, 2, GameplayKeys.WaveMultiplePatrols,
                     (virus, 4, 0f), (espia, 2, 7f)),
-                Wave("Last stand", 10f, SpawnPlacement.BehindPlayer, 2, GameplayKeys.WaveHoldOn,
+                Wave("Last stand", 7f, SpawnPlacement.BehindPlayer, 2, GameplayKeys.WaveHoldOn,
                     (virus, 4, 0f), (espia, 2, 6f)));
         }
 
         /// <summary>
-        /// Nivel 2 (140 s): los cuatro enemigos. Goteo mixto + hordas coordinadas (Escudo bloqueando el avance,
+        /// Nivel 2 (60 s): los cuatro enemigos. Goteo mixto + hordas coordinadas (Escudo bloqueando el avance,
         /// Voladores desde el aire, Espías cubriendo) y una oleada final masiva que hay que limpiar para ganar.
         /// </summary>
         private static void ConfigureLevel2(SerializedObject so)
         {
-            const float duration = 140f;
+            const float duration = 60f;
             GameObject virus = Enemy("virus_opt"), espia = Enemy("espia_opt"),
                        escudo = Enemy("escudo_opt"), volador = Enemy("volador_opt");
 
             so.FindProperty("levelNumber").intValue = 2;
             so.FindProperty("duration").floatValue = duration;
-            so.FindProperty("finalStretchSeconds").floatValue = 30f;
+            so.FindProperty("finalStretchSeconds").floatValue = 15f;
             so.FindProperty("victoryCondition").enumValueIndex = (int)VictoryCondition.SurviveTimerThenClear;
             so.FindProperty("completedMessageKey").stringValue = GameplayKeys.LevelCompleted;
             so.FindProperty("nextSceneName").stringValue = "Mapa_completo";
@@ -295,20 +295,20 @@ namespace SudoKill9.EditorTools
                 ("Escudo", escudo, 1.2f, 0.15f, SpawnPlacement.AheadOfPlayer),
                 ("Volador", volador, 1.5f, 0.25f, SpawnPlacement.AroundPlayer));
 
-            so.FindProperty("spawnInterval").animationCurveValue = Linear((0f, 5f), (0.5f, 3f), (0.8f, 2f), (1f, 1.1f));
+            so.FindProperty("spawnInterval").animationCurveValue = Linear((0f, 3.5f), (0.5f, 2.2f), (0.8f, 1.5f), (1f, 1f));
             so.FindProperty("batchSize").animationCurveValue = Linear((0f, 1f), (0.5f, 2f), (1f, 3f));
-            so.FindProperty("maxAlive").animationCurveValue = Linear((0f, 5f), (0.6f, 10f), (1f, 16f));
+            so.FindProperty("maxAlive").animationCurveValue = Linear((0f, 5f), (0.6f, 10f), (1f, 14f));
 
             SetWaves(so.FindProperty("scriptedWaves"),
-                Wave("Shield wall", 115f, SpawnPlacement.AheadOfPlayer, 1, GameplayKeys.WaveShieldWall,
+                Wave("Shield wall", 50f, SpawnPlacement.AheadOfPlayer, 1, GameplayKeys.WaveShieldWall,
                     (escudo, 2, 0f), (virus, 3, 0f)),
-                Wave("Air raid", 90f, SpawnPlacement.AroundPlayer, 2, GameplayKeys.WaveAirRaid,
+                Wave("Air raid", 40f, SpawnPlacement.AroundPlayer, 2, GameplayKeys.WaveAirRaid,
                     (volador, 3, 0f), (espia, 2, 6f)),
-                Wave("Pincer", 65f, SpawnPlacement.AroundPlayer, 2, GameplayKeys.WaveFlanked,
+                Wave("Pincer", 29f, SpawnPlacement.AroundPlayer, 2, GameplayKeys.WaveFlanked,
                     (virus, 4, 0f), (escudo, 1, 0f), (volador, 2, 0f)),
-                Wave("Siege", 40f, SpawnPlacement.AheadOfPlayer, 2, GameplayKeys.WaveSiege,
+                Wave("Siege", 18f, SpawnPlacement.AheadOfPlayer, 2, GameplayKeys.WaveSiege,
                     (escudo, 2, 0f), (espia, 3, 6f), (volador, 2, 0f)),
-                Wave("Final wave", 15f, SpawnPlacement.AroundPlayer, 3, GameplayKeys.WaveFinal,
+                Wave("Final wave", 7f, SpawnPlacement.AroundPlayer, 3, GameplayKeys.WaveFinal,
                     (virus, 8, 0f), (escudo, 3, 0f), (volador, 4, 0f), (espia, 4, 6f)));
         }
 
