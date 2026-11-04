@@ -36,6 +36,18 @@ namespace SudoKill9.UI
         [SerializeField] private TMP_Text bossSubtitleText;
         [SerializeField] private TMP_Text bossHealthNumberText;
 
+        [Tooltip("Si está activo, muestra la barra superior 2D en pantalla. Si está inactivo, oculta la barra superior fija dando protagonismo a la barra World Space sobre la cabeza de Windows.")]
+        [SerializeField] private bool mostrarBarraSuperior2D = false;
+        public bool MostrarBarraSuperior2D
+        {
+            get => mostrarBarraSuperior2D;
+            set
+            {
+                mostrarBarraSuperior2D = value;
+                if (bossBarContainer != null) bossBarContainer.SetActive(value);
+            }
+        }
+
         [Header("Colores Boss")]
         [SerializeField] private Color bossHpColorPhase1 = new Color(0.96f, 0.71f, 0.10f); // Ámbar dorado #F4B41A
         [SerializeField] private Color bossHpColorPhase2 = new Color(0.12f, 0.88f, 0.96f); // Cian #14E0F5
@@ -64,12 +76,41 @@ namespace SudoKill9.UI
         // 3. CONSOLA TERMINAL CMD (ESQUINA SUPERIOR DERECHA)                    //
         // ===================================================================== //
 
-        [Header("3. Consola Terminal CMD (Top Right)")]
+        [Header("3. Consola Terminal CMD (Tarjeta de Mensajes)")]
         [SerializeField] private GameObject terminalContainer;
+        [SerializeField] private CanvasGroup terminalCanvasGroup;
         [SerializeField] private TMP_Text terminalTitleText;
         [SerializeField] private TMP_Text terminalContentText;
-        [SerializeField] private int maxLineasTerminal = 6;
-        [SerializeField] private float velocidadTipeoChar = 0.018f; // segundos por carácter
+
+        [Header("Tipografía y Estilo de la Tarjeta")]
+        [Tooltip("Tamaño de la tipografía para el emisor de los mensajes.")]
+        [SerializeField] private float tamanoFuenteTitulo = 16f;
+
+        [Tooltip("Tamaño de la tipografía para los mensajes de combate.")]
+        [SerializeField] private float tamanoFuenteMensajes = 15f;
+
+        [Tooltip("Espaciado vertical entre líneas para mejorar legibilidad.")]
+        [SerializeField] private float espaciadoLineasMensajes = 3.5f;
+
+        [Tooltip("Máximo número de líneas visibles simultáneas en la tarjeta.")]
+        [SerializeField] private int maxLineasTerminal = 4;
+
+        [Tooltip("Velocidad de escritura carácter por carácter.")]
+        [SerializeField] private float velocidadTipeoChar = 0.016f;
+
+        [Header("Animación Discreta de Entrada/Salida")]
+        [Tooltip("Opacidad de la tarjeta cuando pasa un tiempo sin nuevos mensajes.")]
+        [Range(0.2f, 1f)] [SerializeField] private float opacidadReposoTarjeta = 0.75f;
+
+        [Tooltip("Tiempo en segundos que la tarjeta permanece en opacidad total tras recibir un mensaje.")]
+        [SerializeField] private float tiempoVisibleTarjeta = 7.0f;
+
+        public float TamanoFuenteTitulo => tamanoFuenteTitulo;
+        public float TamanoFuenteMensajes => tamanoFuenteMensajes;
+        public float EspaciadoLineasMensajes => espaciadoLineasMensajes;
+        public int MaxLineasTerminal => maxLineasTerminal;
+
+        private float ultimoTiempoMensaje = -999f;
 
         // ===================================================================== //
         // REFERENCIAS DE ACTORES                                                //
@@ -137,6 +178,22 @@ namespace SudoKill9.UI
         {
             ActualizarBarrasSuaves();
             ActualizarCursorTerminal();
+            ActualizarAnimacionTarjetaTerminal();
+        }
+
+        private void ActualizarAnimacionTarjetaTerminal()
+        {
+            if (terminalCanvasGroup == null && terminalContainer != null)
+            {
+                terminalCanvasGroup = terminalContainer.GetComponent<CanvasGroup>();
+                if (terminalCanvasGroup == null) terminalCanvasGroup = terminalContainer.AddComponent<CanvasGroup>();
+            }
+
+            if (terminalCanvasGroup != null)
+            {
+                float targetAlpha = (estaTipeando || (Time.time - ultimoTiempoMensaje) < tiempoVisibleTarjeta) ? 1.0f : opacidadReposoTarjeta;
+                terminalCanvasGroup.alpha = Mathf.MoveTowards(terminalCanvasGroup.alpha, targetAlpha, 2.0f * Time.deltaTime);
+            }
         }
 
         // ===================================================================== //
@@ -283,6 +340,7 @@ namespace SudoKill9.UI
         {
             if (string.IsNullOrEmpty(texto)) return;
 
+            ultimoTiempoMensaje = Time.time;
             colaMensajesPendientes.Enqueue(texto);
             if (!estaTipeando)
             {
@@ -302,6 +360,7 @@ namespace SudoKill9.UI
                 for (int i = 0; i < mensajeCompleto.Length; i++)
                 {
                     lineaEnTipeoActual += mensajeCompleto[i];
+                    ultimoTiempoMensaje = Time.time;
                     RefrescarTextoTerminal();
                     yield return new WaitForSeconds(velocidadTipeoChar);
                 }
@@ -312,6 +371,7 @@ namespace SudoKill9.UI
                     lineasCompletas.RemoveAt(0);
                 }
                 lineaEnTipeoActual = "";
+                ultimoTiempoMensaje = Time.time;
                 RefrescarTextoTerminal();
                 yield return new WaitForSeconds(0.06f);
             }
@@ -322,6 +382,9 @@ namespace SudoKill9.UI
         private void RefrescarTextoTerminal()
         {
             if (terminalContentText == null) return;
+
+            terminalContentText.fontSize = tamanoFuenteMensajes;
+            terminalContentText.lineSpacing = espaciadoLineasMensajes;
 
             System.Text.StringBuilder sb = new System.Text.StringBuilder();
             for (int i = 0; i < lineasCompletas.Count; i++)
@@ -365,14 +428,81 @@ namespace SudoKill9.UI
 
         private void InicializarUI()
         {
+            if (bossBarContainer != null) bossBarContainer.SetActive(mostrarBarraSuperior2D);
             if (bossTitleText != null) bossTitleText.text = "WINDOWS_11_DEFENDER.EXE";
             if (bossSubtitleText != null) bossSubtitleText.text = "ESTADO: ESCANEANDO ARCHIVOS DE SISTEMA... [FASE 1]";
-            if (terminalTitleText != null) terminalTitleText.text = "[CMD] C:\\Windows\\System32\\cmd.exe";
+
+            // 1. Configuración de dimensiones y aspecto de la tarjeta de mensajes CMD
+            if (terminalContainer != null)
+            {
+                RectTransform rtTerm = terminalContainer.GetComponent<RectTransform>();
+                if (rtTerm != null)
+                {
+                    rtTerm.anchorMin = new Vector2(1f, 1f);
+                    rtTerm.anchorMax = new Vector2(1f, 1f);
+                    rtTerm.pivot = new Vector2(1f, 1f);
+                    rtTerm.anchoredPosition = new Vector2(-25f, -25f);
+                    rtTerm.sizeDelta = new Vector2(560f, 195f);
+                }
+
+                Image panelImg = terminalContainer.GetComponent<Image>();
+                if (panelImg != null)
+                {
+                    panelImg.color = new Color(0.03f, 0.05f, 0.04f, 0.94f); // Fondo oscuro de alto contraste
+                }
+
+                if (terminalCanvasGroup == null)
+                {
+                    terminalCanvasGroup = terminalContainer.GetComponent<CanvasGroup>();
+                    if (terminalCanvasGroup == null) terminalCanvasGroup = terminalContainer.AddComponent<CanvasGroup>();
+                }
+            }
+
+            // 2. Configurar título / emisor de la tarjeta CMD
+            if (terminalTitleText != null)
+            {
+                terminalTitleText.text = "[CMD] C:\\Windows\\System32\\cmd.exe";
+                terminalTitleText.fontSize = tamanoFuenteTitulo;
+                terminalTitleText.fontStyle = FontStyles.Bold;
+                terminalTitleText.color = new Color(0.08f, 0.88f, 0.96f); // Cian brillante
+
+                RectTransform rtTitle = terminalTitleText.rectTransform;
+                if (rtTitle != null)
+                {
+                    rtTitle.anchorMin = new Vector2(0f, 1f);
+                    rtTitle.anchorMax = new Vector2(1f, 1f);
+                    rtTitle.pivot = new Vector2(0f, 1f);
+                    rtTitle.anchoredPosition = new Vector2(24f, -10f);
+                    rtTitle.sizeDelta = new Vector2(-48f, 26f);
+                }
+            }
+
+            // 3. Configurar contenido de mensajes CMD con padding generoso
+            if (terminalContentText != null)
+            {
+                terminalContentText.fontSize = tamanoFuenteMensajes;
+                terminalContentText.lineSpacing = espaciadoLineasMensajes;
+                terminalContentText.color = new Color(0.92f, 0.99f, 0.94f); // Verde fósforo claro de alto contraste
+                terminalContentText.textWrappingMode = TextWrappingModes.Normal;
+                terminalContentText.overflowMode = TextOverflowModes.Truncate;
+
+                RectTransform rtContent = terminalContentText.rectTransform;
+                if (rtContent != null)
+                {
+                    rtContent.anchorMin = Vector2.zero;
+                    rtContent.anchorMax = Vector2.one;
+                    rtContent.offsetMin = new Vector2(24f, 16f);
+                    rtContent.offsetMax = new Vector2(-24f, -42f);
+                }
+            }
+
+            if (maxLineasTerminal > 4) maxLineasTerminal = 4;
 
             if (bossAI != null)
             {
                 ActualizarSaludBoss(bossAI.CurrentHealth, bossAI.MaxHealth);
                 ActualizarFaseBoss(bossAI.FaseActual);
+                ActualizarVidaBoss(bossAI.CurrentHealth, bossAI.MaxHealth, bossAI.VidaActual, bossAI.VidasTotales);
             }
             else
             {
@@ -397,6 +527,9 @@ namespace SudoKill9.UI
             WindowsBossAI.OnBossPhaseChanged -= ActualizarFaseBoss;
             WindowsBossAI.OnBossPhaseChanged += ActualizarFaseBoss;
 
+            WindowsBossAI.OnBossLifeChanged -= ActualizarVidaBoss;
+            WindowsBossAI.OnBossLifeChanged += ActualizarVidaBoss;
+
             LinuxCombatIK.OnPlayerHealthChanged -= ActualizarSaludTux;
             LinuxCombatIK.OnPlayerHealthChanged += ActualizarSaludTux;
 
@@ -408,8 +541,22 @@ namespace SudoKill9.UI
         {
             WindowsBossAI.OnBossHealthChanged -= ActualizarSaludBoss;
             WindowsBossAI.OnBossPhaseChanged -= ActualizarFaseBoss;
+            WindowsBossAI.OnBossLifeChanged -= ActualizarVidaBoss;
             LinuxCombatIK.OnPlayerHealthChanged -= ActualizarSaludTux;
             WindowsCommandAttacks.OnCommandExecuted -= HandleCommandExecuted;
+        }
+
+        public void ActualizarVidaBoss(float actual, float max, int vidaNum, int vidaTotales)
+        {
+            ActualizarSaludBoss(actual, max);
+            if (bossTitleText != null)
+            {
+                bossTitleText.text = $"WINDOWS_11_DEFENDER.EXE [VIDA {vidaNum}/{vidaTotales}]";
+            }
+            if (bossHealthFillImage != null && vidaNum == 2)
+            {
+                bossHealthFillImage.color = bossHpColorPhase3;
+            }
         }
 
         private void HandleCommandExecuted(string comando)
@@ -633,6 +780,8 @@ namespace SudoKill9.UI
             hud.bossTitleText = title;
             hud.bossSubtitleText = subtitle;
             hud.bossHealthNumberText = hpNumber;
+
+            bossGO.SetActive(hud.mostrarBarraSuperior2D);
         }
 
         private static void ConstruirBarraTuxRuntime(Transform parent, TMP_FontAsset font, Sprite panelSprite, CombatHUDManager hud)
@@ -707,35 +856,39 @@ namespace SudoKill9.UI
             rt.anchorMax = new Vector2(1f, 1f);
             rt.pivot = new Vector2(1f, 1f);
             rt.anchoredPosition = new Vector2(-25f, -25f);
-            rt.sizeDelta = new Vector2(460f, 155f);
+            rt.sizeDelta = new Vector2(560f, 195f);
 
             Image panelImg = ObtenerOAgregarComponente<Image>(termGO);
             if (panelSprite != null) { panelImg.sprite = panelSprite; panelImg.type = Image.Type.Sliced; }
-            panelImg.color = new Color(0.04f, 0.06f, 0.05f, 0.88f);
+            panelImg.color = new Color(0.03f, 0.05f, 0.04f, 0.94f);
 
-            TMP_Text title = ObtenerOCrearTextoRuntime(termGO.transform, "TerminalTitle", font, 12, FontStyles.Bold, TextAlignmentOptions.Left);
+            CanvasGroup cg = ObtenerOAgregarComponente<CanvasGroup>(termGO);
+            cg.alpha = 1f;
+
+            TMP_Text title = ObtenerOCrearTextoRuntime(termGO.transform, "TerminalTitle", font, 16, FontStyles.Bold, TextAlignmentOptions.Left);
             RectTransform rtTitle = title.rectTransform;
             rtTitle.anchorMin = new Vector2(0f, 1f);
             rtTitle.anchorMax = new Vector2(1f, 1f);
             rtTitle.pivot = new Vector2(0f, 1f);
-            rtTitle.anchoredPosition = new Vector2(14f, -6f);
-            rtTitle.sizeDelta = new Vector2(-28f, 18f);
+            rtTitle.anchoredPosition = new Vector2(24f, -10f);
+            rtTitle.sizeDelta = new Vector2(-48f, 26f);
             title.text = "[CMD] C:\\Windows\\System32\\cmd.exe";
             title.color = new Color(0.08f, 0.88f, 0.96f);
 
-            TMP_Text content = ObtenerOCrearTextoRuntime(termGO.transform, "TerminalContent", font, 10, FontStyles.Normal, TextAlignmentOptions.TopLeft);
+            TMP_Text content = ObtenerOCrearTextoRuntime(termGO.transform, "TerminalContent", font, 15, FontStyles.Normal, TextAlignmentOptions.TopLeft);
             RectTransform rtContent = content.rectTransform;
             rtContent.anchorMin = Vector2.zero;
             rtContent.anchorMax = Vector2.one;
-            rtContent.offsetMin = new Vector2(14f, 10f);
-            rtContent.offsetMax = new Vector2(-14f, -24f);
-            content.lineSpacing = -10f;
+            rtContent.offsetMin = new Vector2(24f, 16f);
+            rtContent.offsetMax = new Vector2(-24f, -42f);
+            content.lineSpacing = 3.5f;
             content.text = "> Inicializando terminal...";
-            content.color = new Color(0.85f, 0.95f, 0.90f);
+            content.color = new Color(0.92f, 0.99f, 0.94f);
 
             hud.terminalContainer = termGO;
             hud.terminalTitleText = title;
             hud.terminalContentText = content;
+            hud.terminalCanvasGroup = cg;
         }
 
         private static void ConstruirBSODRuntime(Transform parent, TMP_FontAsset font)
