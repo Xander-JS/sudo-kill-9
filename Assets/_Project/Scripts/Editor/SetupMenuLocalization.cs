@@ -24,7 +24,7 @@ using SudoKill9.UI;
 /// </summary>
 public static class SetupMenuLocalization
 {
-    private const string InicioScenePath = "Assets/_Project/Scenes/Inicio.unity";
+    private const string InicioScenePath = "Assets/_Project/Scenes/GamePlay/Inicio.unity";
     private const string MenuCanvasName = "Menu_Canvas";
     private const string ButtonsColumn  = "Menu_Buttons_Column";
 

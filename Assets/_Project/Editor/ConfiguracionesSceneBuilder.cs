@@ -28,7 +28,7 @@ namespace SudoKill9.EditorTools
     {
         private const string TablesDir = "Assets/_Project/Localization/Tables";
         private const string TableName = "Settings";
-        private const string ScenePath = "Assets/_Project/Scenes/Configuraciones.unity";
+        private const string ScenePath = "Assets/_Project/Scenes/GamePlay/Configuraciones.unity";
         private const string FontPath = "Assets/_Project/Fonts/PixelTactical_Point.asset";
 
         // Paleta de Inicio (InicioPixelArtUISetup / CreditsSceneBuilder).

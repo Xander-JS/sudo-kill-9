@@ -19,7 +19,7 @@ namespace SudoKill9.Editor
     /// </summary>
     public static class InicioPixelArtUISetup
     {
-        private const string InicioScenePath = "Assets/_Project/Scenes/Inicio.unity";
+        private const string InicioScenePath = "Assets/_Project/Scenes/GamePlay/Inicio.unity";
         private const string SourceTtfPath = "Assets/_Project/Fonts/PixelTacticalMono-Bold.ttf";
         private const string FallbackTtfPath = "Assets/TextMesh Pro/Fonts/LiberationSans.ttf";
         private const string PixelFontAssetDir = "Assets/_Project/Fonts";

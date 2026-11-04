@@ -18,7 +18,7 @@ namespace SudoKill9.Editor
     /// </summary>
     public static class InicioSceneOptimizer
     {
-        private const string ScenePath = "Assets/_Project/Scenes/Inicio.unity";
+        private const string ScenePath = "Assets/_Project/Scenes/GamePlay/Inicio.unity";
         private const string ModelsRoot = "Assets/_Project/Models";
         private const string Tag = "[InicioOptimizer]";
 

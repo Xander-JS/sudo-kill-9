@@ -31,7 +31,7 @@ using SudoKill9.UI.Inicio;
 /// </summary>
 public static class SetupIntroVideoSystem
 {
-    private const string InicioScenePath = "Assets/_Project/Scenes/Inicio.unity";
+    private const string InicioScenePath = "Assets/_Project/Scenes/GamePlay/Inicio.unity";
     private const string TargetScenePath = "Assets/_Project/Scenes/Experimento_K/Scene_mapa/Mapa_completo.unity";
     private const string TargetSceneName = "Mapa_completo";
 

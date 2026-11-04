@@ -19,7 +19,7 @@ namespace SudoKill9.Editor
     /// </summary>
     public static class InicioWarzoneAtmosphereSetup
     {
-        private const string InicioScenePath = "Assets/_Project/Scenes/Inicio.unity";
+        private const string InicioScenePath = "Assets/_Project/Scenes/GamePlay/Inicio.unity";
         private const string TextureDir = "Assets/_Project/Models/Environment/Inicio_modelos/Texture";
         private const string AlbedoPath = TextureDir + "/Warzone_BunkerWall_Albedo.png";
         private const string NormalPath = TextureDir + "/Warzone_BunkerWall_Normal.png";

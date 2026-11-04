@@ -29,7 +29,7 @@ namespace SudoKill9.EditorTools
         private const string LocalesDir = LocalizationDir + "/Locales";
         private const string TablesDir = LocalizationDir + "/Tables";
         private const string TableName = "Credits";
-        private const string ScenePath = "Assets/_Project/Scenes/Credits.unity";
+        private const string ScenePath = "Assets/_Project/Scenes/GamePlay/Credits.unity";
         private const string FontPath = "Assets/_Project/Fonts/PixelTactical_Point.asset";
 
         // Paleta de la escena Inicio (InicioSceneBuilder / InicioPixelArtUISetup).
@@ -81,6 +81,9 @@ namespace SudoKill9.EditorTools
             ("credits_tool_audio_label", "Diseño y Audio", "Design and Audio", Style.Label),
             ("credits_tool_audio", "FMOD", "FMOD", Style.Value),
             (null, null, null, Style.GapSmall),
+            ("credits_tool_audio_editing_label", "Edición y Masterización de Audio", "Audio Editing and Mastering", Style.Label),
+            ("credits_tool_audio_editing", "Audacity", "Audacity", Style.Value),
+            (null, null, null, Style.GapSmall),
             ("credits_tool_mesh_label", "Generación de Mallas 3D", "3D Mesh Generation", Style.Label),
             ("credits_tool_mesh", "Tripo 3D", "Tripo 3D", Style.Value),
             (null, null, null, Style.GapSmall),
@@ -89,6 +92,55 @@ namespace SudoKill9.EditorTools
             (null, null, null, Style.GapSmall),
             ("credits_tool_rigging_label", "Rigging y Animaciones", "Rigging and Animations", Style.Label),
             ("credits_tool_rigging", "Adobe Mixamo", "Adobe Mixamo", Style.Value),
+            (null, null, null, Style.GapLarge),
+
+            (null, null, null, Style.Separator),
+            ("credits_sound_header", "MÚSICA Y EFECTOS DE SONIDO", "MUSIC & SOUND EFFECTS", Style.Header),
+            (null, null, null, Style.Separator),
+            (null, null, null, Style.GapSmall),
+            ("credits_sound_pixabay_label", "Música y efectos de sonido libres de regalías", "Royalty-free music and sound effects", Style.Label),
+            ("credits_sound_pixabay", "Pixabay (pixabay.com)", "Pixabay (pixabay.com)", Style.Value),
+            ("credits_sound_pixabay_note",
+                "Gracias a los autores y artistas de Pixabay\npor compartir su trabajo bajo la Licencia de Contenido de Pixabay",
+                "Thanks to the Pixabay authors and artists\nfor sharing their work under the Pixabay Content License", Style.Note),
+            (null, null, null, Style.GapLarge),
+            (null, null, null, Style.Separator),
+            ("credits_freesound_header", "EFECTOS DE SONIDO DE FREESOUND", "FREESOUND SOUND EFFECTS", Style.Header),
+            (null, null, null, Style.Separator),
+            (null, null, null, Style.GapSmall),
+            ("credits_freesound_label", "Sonidos de la comunidad", "Community sounds", Style.Label),
+            ("credits_freesound", "Freesound (freesound.org)", "Freesound (freesound.org)", Style.Value),
+            (null, null, null, Style.GapSmall),
+            // Generado desde los nombres de archivo de Audio/ (formato usuario__nombre-del-sonido).
+            ("credits_freesound_aemyn_journey_to_the_interweb", "\"Journey To The Interweb\" por aemyn", "\"Journey To The Interweb\" by aemyn", Style.Role),
+            ("credits_freesound_alienxxx_fx_26_laser", "\"Fx 26 Laser\" por alienxxx", "\"Fx 26 Laser\" by alienxxx", Style.Role),
+            ("credits_freesound_alphatrooper18_laser_shoot2", "\"Laser Shoot2\" por alphatrooper18", "\"Laser Shoot2\" by alphatrooper18", Style.Role),
+            ("credits_freesound_daleonfire_laser2", "\"Laser2\" por daleonfire", "\"Laser2\" by daleonfire", Style.Role),
+            ("credits_freesound_felixblume_impact_on_a_window", "\"Impact On A Window\" por felixblume", "\"Impact On A Window\" by felixblume", Style.Role),
+            ("credits_freesound_iainmccurdy_buzzing_faulty_and_sparking_fluorescent_light", "\"Buzzing Faulty And Sparking Fluorescent Light\" por iainmccurdy", "\"Buzzing Faulty And Sparking Fluorescent Light\" by iainmccurdy", Style.Role),
+            ("credits_freesound_malucien_agua", "\"Agua\" por malucien", "\"Agua\" by malucien", Style.Role),
+            ("credits_freesound_mirmaximus_sfx_outage_hit", "\"Sfx Outage Hit\" por mirmaximus", "\"Sfx Outage Hit\" by mirmaximus", Style.Role),
+            ("credits_freesound_nakhas_data_transfer", "\"Data Transfer\" por nakhas", "\"Data Transfer\" by nakhas", Style.Role),
+            ("credits_freesound_sergenious_robo", "\"Robo\" por sergenious", "\"Robo\" by sergenious", Style.Role),
+            ("credits_freesound_signaturesoundsorg_game_clicks_from", "\"Game Clicks From\" por signaturesoundsorg", "\"Game Clicks From\" by signaturesoundsorg", Style.Role),
+            ("credits_freesound_tboneaudio_data_bolts", "\"Data Bolts\" por tboneaudio", "\"Data Bolts\" by tboneaudio", Style.Role),
+            ("credits_freesound_timkahn_glitch_sd_03", "\"Glitch Sd 03\" por timkahn", "\"Glitch Sd 03\" by timkahn", Style.Role),
+            ("credits_freesound_xcreenplay_cyber_play", "\"Cyber Play\" por xcreenplay", "\"Cyber Play\" by xcreenplay", Style.Role),
+            (null, null, null, Style.GapSmall),
+            ("credits_freesound_note",
+                "Sonidos de los usuarios de Freesound,\nusados bajo sus respectivas licencias Creative Commons",
+                "Sounds by Freesound users,\nused under their respective Creative Commons licenses", Style.Note),
+            (null, null, null, Style.GapLarge),
+
+            (null, null, null, Style.Separator),
+            ("credits_assets_header", "ANIMACIONES Y EFECTOS VISUALES EXTERNOS", "EXTERNAL ANIMATIONS & VISUAL EFFECTS", Style.Header),
+            (null, null, null, Style.Separator),
+            (null, null, null, Style.GapSmall),
+            ("credits_assets_store_label", "Animaciones y efectos visuales (VFX)", "Animations and visual effects (VFX)", Style.Label),
+            ("credits_assets_store", "Unity Asset Store", "Unity Asset Store", Style.Value),
+            ("credits_assets_store_note",
+                "Hovl Studio · JMO Assets (Cartoon FX)\nUsados bajo la Licencia Estándar de la Unity Asset Store",
+                "Hovl Studio · JMO Assets (Cartoon FX)\nUsed under the Unity Asset Store Standard License", Style.Note),
             (null, null, null, Style.GapLarge),
 
             (null, null, null, Style.Separator),
@@ -244,6 +296,8 @@ namespace SudoKill9.EditorTools
             so.FindProperty("content").objectReferenceValue = content;
             so.FindProperty("lastLine").objectReferenceValue = lastLine;
             so.FindProperty("fader").objectReferenceValue = group;
+            // ~2× más líneas que la versión original (atribuciones Pixabay/Freesound/Asset Store): misma velocidad de lectura.
+            so.FindProperty("scrollDuration").floatValue = 30f;
             so.ApplyModifiedPropertiesWithoutUndo();
 
             EditorSceneManager.SaveScene(scene, ScenePath);

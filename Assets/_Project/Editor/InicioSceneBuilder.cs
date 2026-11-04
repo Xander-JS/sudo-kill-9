@@ -15,7 +15,7 @@ namespace SudoKill9.Editor
     /// </summary>
     public static class InicioSceneBuilder
     {
-        private const string ScenePath = "Assets/_Project/Scenes/Inicio.unity";
+        private const string ScenePath = "Assets/_Project/Scenes/GamePlay/Inicio.unity";
         private const string BgmPath = "Assets/_Project/Audio/BGM/electronic-future-loop.ogg";
         private const string FontAssetPath = "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset";
 
