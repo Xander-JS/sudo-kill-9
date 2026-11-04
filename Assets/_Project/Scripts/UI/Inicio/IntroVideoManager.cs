@@ -133,6 +133,7 @@ namespace SudoKill9.UI.Inicio
             }
 
             _started = true;
+            MenuMusicPlayer.Stop(0.5f); // sólo debe oírse el audio del video; no se reanuda al cargar el gameplay
             Debug.Log($"[IntroVideoManager] Idioma={(english ? "EN" : "ES")} → clip '{clip.name}'.");
 
             if (menuCanvas != null) menuCanvas.SetActive(false); // evita solapamiento / doble input

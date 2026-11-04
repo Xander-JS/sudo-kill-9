@@ -68,15 +68,12 @@ namespace SudoKill9.UI.Inicio
                 volumeSlider.onValueChanged.AddListener(SetMasterVolume);
             }
 
-            // Reproducir música si está asignada
-            if (bgmAudioSource != null && !bgmAudioSource.isPlaying)
+            // La música la reproduce MenuMusicPlayer (persistente): así sigue sonando en Configuraciones
+            // sin reiniciarse. Este AudioSource de la escena sólo aporta el clip y el volumen de mezcla.
+            if (bgmAudioSource != null)
             {
-                // La música del menú respeta el slider "Música" de Configuraciones.
-                if (bgmAudioSource.GetComponent<AudioVolumeChannel>() == null)
-                    bgmAudioSource.gameObject.AddComponent<AudioVolumeChannel>().Channel = AudioChannel.Music;
-
-                bgmAudioSource.loop = true;
-                bgmAudioSource.Play();
+                bgmAudioSource.Stop(); // por si tiene Play On Awake: evita que suene duplicada
+                MenuMusicPlayer.Play(bgmAudioSource.clip, bgmAudioSource.volume);
             }
         }
 
@@ -89,6 +86,7 @@ namespace SudoKill9.UI.Inicio
         {
             if (!string.IsNullOrEmpty(gameplaySceneName))
             {
+                MenuMusicPlayer.Stop(0f);
                 SceneManager.LoadScene(gameplaySceneName);
             }
             else
