@@ -66,7 +66,7 @@ namespace SudoKill9.Enemies
             CheckCriticalChange();
         }
 
-        // Nada del jugador daña aún a los enemigos: esto permite probar los SFX de daño/muerte desde el inspector.
+        // Atajo de depuración: probar barra de vida, SFX y VFX de daño/muerte desde el inspector sin disparar.
         [ContextMenu("Debug/Recibir 25 de daño")]
         private void DebugTakeDamage() => TakeDamage(25f);
 
