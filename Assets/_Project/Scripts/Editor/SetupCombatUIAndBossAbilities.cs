@@ -30,20 +30,9 @@ namespace SudoKill9.EditorTools
 
         static SetupCombatUIAndBossAbilities()
         {
-            EditorApplication.delayCall += () =>
-            {
-                if (EditorApplication.isPlayingOrWillChangePlaymode) return;
-                const string folder = "Assets/_Project/Scenes/Experimento_K";
-                AssetDatabase.ImportAsset(folder, ImportAssetOptions.ImportRecursive | ImportAssetOptions.ForceUpdate);
-                AssetDatabase.ImportAsset(ScenePath, ImportAssetOptions.ForceUpdate);
-                
-                var activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
-                if (activeScene.path == ScenePath)
-                {
-                    EjecutarConfiguracionSilenciosa();
-                    EjecutarPruebasVerificacion();
-                }
-            };
+            // Constructor estático limpio: no ejecutar reimportaciones forzadas recursivas
+            // que bloqueen la interfaz de Unity en cada recarga de dominio.
+            // Para configurar o verificar, usar el menú: Tools > SudoKill9
         }
 
         public static void EjecutarConfiguracionSilenciosa()

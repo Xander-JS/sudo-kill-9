@@ -935,8 +935,8 @@ public class WindowsCommandAttacks : MonoBehaviour
 #endif
 
         // Sustitución de rayos antiguos: Desactivar LineRenderers antiguos rígidos
-        if (guiaLaserCarga != null) guiaLaserCarga.enabled = false;
-        if (hazKamehameha != null) hazKamehameha.enabled = false;
+        if (guiaLaserCarga != null) guiaLaserCarga.enabled = mostrarGuiaLaserCarga;
+        if (hazKamehameha != null) hazKamehameha.enabled = mostrarRayoLineRenderer;
 
         // Escudo Frontal Holográfico de Firewall
         if (escudoVisual == null)

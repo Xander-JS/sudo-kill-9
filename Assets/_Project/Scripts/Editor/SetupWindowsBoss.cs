@@ -21,17 +21,9 @@ namespace SudoKill9.EditorTools
 
         static SetupWindowsBoss()
         {
-            EditorApplication.delayCall += () =>
-            {
-                if (EditorApplication.isPlayingOrWillChangePlaymode) return;
-                const string folder = "Assets/_Project/Scenes/Experimento_K";
-                const string path = "Assets/_Project/Scenes/Experimento_K/prueba_Expe_K.unity";
-                AssetDatabase.ImportAsset(folder, ImportAssetOptions.ImportRecursive | ImportAssetOptions.ForceUpdate);
-                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
-                WireLinuxCameraPivotIfOpen(silent: true);
-                WireSceneIfOpen(silent: true);
-                EjecutarVerificacionAutomatica();
-            };
+            // Constructor estático limpio: no ejecutar reimportaciones forzadas recursivas
+            // que bloqueen la interfaz de Unity en cada recarga de dominio.
+            // Para ejecutar verificaciones, usar el menú: Tools > SudoKill9 > Ejecutar Verificación de Combate
         }
 
         [MenuItem("Tools/SudoKill9/Ejecutar Verificación de Combate")]
@@ -218,6 +210,8 @@ namespace SudoKill9.EditorTools
                 mAI.GarantizarComponentesFisicos();
                 var mCombat = meleeDummyPlayer.AddComponent<LinuxCombatIK>();
                 var mHealth = meleeDummyPlayer.AddComponent<PlayerHealth>();
+                mCombat.ConfigurarSaludJugador();
+                mHealth.RestaurarVidaCompleta();
                 mAI.Target = meleeDummyPlayer.transform;
 
                 // Forzar posición a 1.5m (rango cuerpo a cuerpo de Patada)
@@ -319,6 +313,7 @@ namespace SudoKill9.EditorTools
             {
                 var pCombat = playerDeadDummy.AddComponent<LinuxCombatIK>();
                 var pHealth = playerDeadDummy.AddComponent<PlayerHealth>();
+                pCombat.ConfigurarSaludJugador();
                 pCombat.TakeDamage(9999f);
                 bool muertoOk = pCombat.IsDead && pHealth.IsDead;
                 sb.AppendLine($"[TEST 17] Estado IsDead del jugador Linux y supresión de acciones = {(muertoOk ? "PASS" : "FAIL")}");

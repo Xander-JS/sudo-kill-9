@@ -91,6 +91,7 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
     [Header("Máquina de Estados Táctica (HFSM)")]
     [Tooltip("Estado táctico actual del jefe calculado en tiempo real.")]
     [SerializeField] private BossCombatState estadoCombate = BossCombatState.Stalking;
+    public BossCombatState EstadoCombate => estadoCombate;
 
     [Header("Navegación Inteligente (NavMesh)")]
     [Tooltip("Componente NavMeshAgent opcional para desplazamiento inteligente sorteando obstáculos.")]

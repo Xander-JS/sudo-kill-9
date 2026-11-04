@@ -287,6 +287,11 @@ public class LinuxCombatIK : MonoBehaviour, IDamageable
     {
         if (IsDead || amount <= 0f) return;
 
+        if (playerHealth == null)
+        {
+            ConfigurarSaludJugador();
+        }
+
         if (playerHealth != null)
         {
             playerHealth.TakeDamage(Mathf.Max(1, Mathf.RoundToInt(amount)));
@@ -470,7 +475,7 @@ public class LinuxCombatIK : MonoBehaviour, IDamageable
         ConfigurarSaludJugador();
     }
 
-    private void ConfigurarSaludJugador()
+    public void ConfigurarSaludJugador()
     {
         if (playerHealth == null) playerHealth = GetComponent<PlayerHealth>();
         if (playerHealth == null) playerHealth = GetComponentInChildren<PlayerHealth>();

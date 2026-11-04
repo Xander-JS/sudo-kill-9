@@ -38,14 +38,17 @@ namespace SudoKill9.Combat
 
         private void Awake()
         {
-            // Desactivar cualquier Collider propio (ej. BoxCollider de RotatorPS2) para evitar colisiones indeseadas
+            DesactivarCollidersInternos();
+            particulas = GetComponentsInChildren<ParticleSystem>(true);
+        }
+
+        private void DesactivarCollidersInternos()
+        {
             Collider[] colliders = GetComponentsInChildren<Collider>(true);
             for (int i = 0; i < colliders.Length; i++)
             {
                 if (colliders[i] != null) colliders[i].enabled = false;
             }
-
-            particulas = GetComponentsInChildren<ParticleSystem>(true);
         }
 
         /// <summary>
@@ -53,6 +56,7 @@ namespace SudoKill9.Combat
         /// </summary>
         public void Inicializar(Transform objetivo, float duracion = 5.0f, Vector3? escalaBase = null)
         {
+            DesactivarCollidersInternos();
             targetLinux = objetivo;
             duracionTornado = Mathf.Max(0.5f, duracion);
             if (escalaBase.HasValue)
