@@ -6,6 +6,7 @@ using UnityEngine.AI;
 using UnityEngine.Events;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
+using UnityEngine.Serialization;
 using SudoKill9.Enemies;
 using SudoKill9.UI;
 using Random = UnityEngine.Random;
@@ -66,8 +67,9 @@ namespace SudoKill9.Levels
         [Min(1)] public int entryPoints = 1;
         [Tooltip("Retardo entre cada miembro, para que no aparezcan todos en el mismo frame.")]
         [Min(0f)] public float memberDelay = 0.2f;
-        [Tooltip("Mensaje de aviso en el HUD (vacío = sin aviso).")]
-        public string announcement = "HORDE INCOMING";
+        [Tooltip("Clave de la tabla de localización 'Gameplay' con el aviso del HUD (vacío = sin aviso).")]
+        [FormerlySerializedAs("announcement")]
+        public string announcementKey = "gameplay_wave_horde";
         public HordeGroup[] groups = Array.Empty<HordeGroup>();
 
         [NonSerialized] public bool fired;
@@ -126,8 +128,9 @@ namespace SudoKill9.Levels
         [Min(1)] [SerializeField] private int maxPlacementAttempts = 16;
 
         [Header("Victoria y transición")]
-        [Tooltip("Mensaje del panel de nivel completado.")]
-        [SerializeField] private string completedMessage = "LEVEL 1 COMPLETED!";
+        [Tooltip("Clave de la tabla 'Gameplay' para el panel de nivel completado ({0} = número de nivel).")]
+        [FormerlySerializedAs("completedMessage")]
+        [SerializeField] private string completedMessageKey = GameplayKeys.LevelCompleted;
         [Tooltip("Escena a la que se pasa al ganar (debe estar en Build Settings).")]
         [SerializeField] private string nextSceneName = "Nivel_2";
         [Tooltip("Escena de respaldo si 'nextSceneName' aún no existe en Build Settings (p. ej. Nivel_3 en desarrollo).")]
@@ -148,8 +151,8 @@ namespace SudoKill9.Levels
         public UnityEvent onLevelCompleted;
         public UnityEvent onLevelFailed;
 
-        /// <summary>Texto de aviso de horda (para el HUD).</summary>
-        public event Action<string> OnAnnouncement;
+        /// <summary>Aviso para el HUD: clave de la tabla 'Gameplay' y argumento opcional de formato ({0}).</summary>
+        public event Action<string, object> OnAnnouncement;
 
         public SurvivalLevelState State { get; private set; } = SurvivalLevelState.Starting;
         public int LevelNumber => levelNumber;
@@ -160,7 +163,8 @@ namespace SudoKill9.Levels
         public float Progress => Mathf.Clamp01(Elapsed / duration);
         public bool InFinalStretch => RemainingTime <= finalStretchSeconds;
         public int AliveCount => alive.Count;
-        public string CompletedMessage => completedMessage;
+        public string CompletedMessageKey => completedMessageKey;
+        public float FinalStretchSeconds => finalStretchSeconds;
         public VictoryCondition Victory => victoryCondition;
         public Key ContinueKey => continueKey;
         /// <summary>Verdadero cuando el panel final ya acepta la tecla de continuar.</summary>
@@ -226,7 +230,7 @@ namespace SudoKill9.Levels
             {
                 finalStretchRaised = true;
                 onFinalStretch?.Invoke();
-                OnAnnouncement?.Invoke($"FINAL {Mathf.RoundToInt(finalStretchSeconds)} SECONDS");
+                OnAnnouncement?.Invoke(GameplayKeys.FinalStretch, Mathf.RoundToInt(finalStretchSeconds));
             }
 
             // Hordas programadas
@@ -264,7 +268,7 @@ namespace SudoKill9.Levels
                 if (alive.Count > 0)
                 {
                     State = SurvivalLevelState.Clearing;
-                    OnAnnouncement?.Invoke("ELIMINATE THE REMAINING ENEMIES");
+                    OnAnnouncement?.Invoke(GameplayKeys.ClearRemaining, null);
                     return;
                 }
             }
@@ -342,7 +346,7 @@ namespace SudoKill9.Levels
 
         private IEnumerator SpawnHorde(ScriptedWave wave)
         {
-            if (!string.IsNullOrEmpty(wave.announcement)) OnAnnouncement?.Invoke(wave.announcement);
+            if (!string.IsNullOrEmpty(wave.announcementKey)) OnAnnouncement?.Invoke(wave.announcementKey, null);
 
             int entries = Mathf.Max(1, wave.entryPoints);
             var centers = new Vector3[entries];
