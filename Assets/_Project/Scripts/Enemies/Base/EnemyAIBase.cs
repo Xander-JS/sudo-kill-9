@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.AI;
 using SudoKill9.Combat;
@@ -122,7 +123,7 @@ namespace SudoKill9.Enemies
                 if (target == null) return;
             }
 
-            float distance = Vector3.Distance(transform.position, target.position);
+            float distance = DistanceToTarget();
 
             switch (currentState)
             {
@@ -194,6 +195,9 @@ namespace SudoKill9.Enemies
             if (stateTimer <= 0f) ChangeState(EnemyState.Chase);
         }
 
+        /// <summary>Distancia usada para alerta/persecución/ataque. Sobrescribir p. ej. para enemigos voladores (distancia horizontal).</summary>
+        protected virtual float DistanceToTarget() => Vector3.Distance(transform.position, target.position);
+
         /// <summary>Índice de la variante de ataque (parámetro AttackIndex del Animator y clip de audio).</summary>
         protected virtual int ChooseAttackVariant() => 0;
 
@@ -210,7 +214,34 @@ namespace SudoKill9.Enemies
             if (target.TryGetComponent<IDamageable>(out var damageable))
             {
                 damageable.TakeDamage(stats.AttackDamage);
+                Vector3 point = GetMeleeContactPoint(out Vector3 normal);
+                NotifyAttackConnected(point, normal);
             }
+        }
+
+        /// <summary>
+        /// (punto de contacto, normal hacia el atacante) cada vez que un ataque llega a dañar al objetivo.
+        /// Lo usa EnemyVFXHandler para el impacto; los derivados con daño propio (p. ej. láser) llaman a NotifyAttackConnected.
+        /// </summary>
+        public event Action<Vector3, Vector3> OnAttackConnected;
+
+        protected void NotifyAttackConnected(Vector3 point, Vector3 normal) => OnAttackConnected?.Invoke(point, normal);
+
+        /// <summary>Punto de la superficie del objetivo más cercano al pecho del atacante (bounds del collider, o altura fija).</summary>
+        protected Vector3 GetMeleeContactPoint(out Vector3 normal)
+        {
+            Vector3 from = transform.position + Vector3.up * 1f;
+            Vector3 point = target.position + Vector3.up * 1f;
+            if (target.TryGetComponent<Collider>(out var col) && col.enabled)
+            {
+                Vector3 closest = col.bounds.ClosestPoint(from);
+                point = (closest - from).sqrMagnitude > 0.0001f ? closest : col.bounds.center;
+            }
+
+            normal = from - point;
+            normal.y = 0f;
+            normal = normal.sqrMagnitude > 0.0001f ? normal.normalized : -target.forward;
+            return point;
         }
 
         protected void ChangeState(EnemyState newState)
