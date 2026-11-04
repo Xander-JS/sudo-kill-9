@@ -536,10 +536,10 @@ namespace SudoKill9.Editor
             layout.childForceExpandWidth = true;
             layout.childForceExpandHeight = false;
 
-            CreateMenuButton(menuContainer.transform, "[ > INICIAR MISIÓN ]", font, () => controller.StartGame(), true);
-            CreateMenuButton(menuContainer.transform, "[ > CONFIGURACIÓN ]", font, () => controller.OpenOptions(), false);
-            CreateMenuButton(menuContainer.transform, "[ > CRÉDITOS ]", font, () => controller.OpenCredits(), false);
-            CreateMenuButton(menuContainer.transform, "[ > SALIR DEL SISTEMA ]", font, () => controller.QuitGame(), false);
+            CreateMenuButton(menuContainer.transform, "[ > INICIAR MISIÓN ]", font, controller.StartGame, true);
+            CreateMenuButton(menuContainer.transform, "[ > CONFIGURACIÓN ]", font, controller.OpenSettings, false);
+            CreateMenuButton(menuContainer.transform, "[ > CRÉDITOS ]", font, controller.OpenCredits, false);
+            CreateMenuButton(menuContainer.transform, "[ > SALIR DEL SISTEMA ]", font, controller.QuitGame, false);
         }
 
         private static GameObject CreateMenuButton(Transform parent, string label, TMP_FontAsset font, UnityEngine.Events.UnityAction action, bool isPrimary)
@@ -561,7 +561,8 @@ namespace SudoKill9.Editor
                 : new Color(0.08f, 0.12f, 0.18f, 0.85f);
 
             Button btn = btnObj.AddComponent<Button>();
-            btn.onClick.AddListener(action);
+            // Persistente: un AddListener en editor no se serializa y el botón quedaría muerto en la escena guardada.
+            UnityEditor.Events.UnityEventTools.AddPersistentListener(btn.onClick, action);
 
             btnObj.AddComponent<MenuButtonEffects>();
 
@@ -615,7 +616,7 @@ namespace SudoKill9.Editor
             titleRt.anchoredPosition = new Vector2(0f, -25f);
             titleRt.sizeDelta = new Vector2(460f, 40f);
 
-            CreateCloseButton(modal.transform, () => controller.CloseOptions(), font);
+            CreateCloseButton(modal.transform, controller.CloseOptions, font);
 
             modal.SetActive(false);
             return modal;
@@ -671,7 +672,7 @@ namespace SudoKill9.Editor
             bodyRt.anchoredPosition = new Vector2(0f, -10f);
             bodyRt.sizeDelta = new Vector2(500f, 240f);
 
-            CreateCloseButton(modal.transform, () => controller.CloseCredits(), font);
+            CreateCloseButton(modal.transform, controller.CloseCredits, font);
 
             modal.SetActive(false);
             return modal;
@@ -693,7 +694,8 @@ namespace SudoKill9.Editor
             img.color = new Color(0.2f, 0.3f, 0.45f, 0.8f);
 
             Button btn = closeObj.AddComponent<Button>();
-            btn.onClick.AddListener(action);
+            // Persistente: un AddListener en editor no se serializa y el botón quedaría muerto en la escena guardada.
+            UnityEditor.Events.UnityEventTools.AddPersistentListener(btn.onClick, action);
 
             GameObject textObj = new GameObject("Text");
             textObj.transform.SetParent(closeObj.transform, false);
