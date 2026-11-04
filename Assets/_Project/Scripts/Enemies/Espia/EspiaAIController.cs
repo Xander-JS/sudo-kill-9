@@ -248,7 +248,7 @@ namespace SudoKill9.Enemies.Espia
 
             if (hitsTarget && target.TryGetComponent<IDamageable>(out var damageable) && !damageable.IsDead)
             {
-                damageable.TakeDamage(stats.AttackDamage);
+                damageable.TakeDamage(stats.PlayerDamage);
                 NotifyAttackConnected(end, -dir); // impacto del haz: chispas de vuelta hacia el espía
             }
 

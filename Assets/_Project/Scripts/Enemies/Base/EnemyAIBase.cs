@@ -225,7 +225,7 @@ namespace SudoKill9.Enemies
 
             if (target.TryGetComponent<IDamageable>(out var damageable))
             {
-                damageable.TakeDamage(stats.AttackDamage);
+                damageable.TakeDamage(stats.PlayerDamage);
                 Vector3 point = GetMeleeContactPoint(out Vector3 normal);
                 NotifyAttackConnected(point, normal);
             }

@@ -34,6 +34,14 @@ namespace SudoKill9.Enemies
         public float MaxHealth => maxHealth;
         public float CurrentHealth => currentHealth;
         public float AttackDamage => attackDamage;
+
+        /// <summary>
+        /// attackDamage está en escala de 100 HP (tabla de balance), pero PlayerHealth cuenta corazones (10 en Nivel_1/2).
+        /// Sin esta conversión un golpe de 15 restaba 15 corazones: muerte instantánea. 20 HP por corazón,
+        /// así Virus/Espía/Escudo quitan 1 corazón y Volador 2 (mínimo 1). El jefe Windows ya usa corazones y no pasa por aquí.
+        /// </summary>
+        public const float HpPerPlayerHeart = 20f;
+        public float PlayerDamage => Mathf.Max(1f, Mathf.Round(attackDamage / HpPerPlayerHeart));
         public float AttackCooldown => attackCooldown;
         public float DespawnDelay => despawnDelay;
         public bool IsDead => currentHealth <= 0f;
