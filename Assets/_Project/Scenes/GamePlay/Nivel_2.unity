@@ -16608,7 +16608,7 @@ MonoBehaviour:
   navMeshSampleRadius: 4
   maxPlacementAttempts: 16
   completedMessageKey: gameplay_level_completed
-  nextSceneName: Nivel_3
+  nextSceneName: Mapa_completo
   fallbackSceneName: Inicio
   minPanelTime: 1.2
   autoAdvanceDelay: 5

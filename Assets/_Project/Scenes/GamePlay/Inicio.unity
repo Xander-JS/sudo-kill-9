@@ -4536,7 +4536,7 @@ MonoBehaviour:
   englishClip: {fileID: 32900000, guid: b770891d1f0b838439f953155bf31f1b, type: 3}
   spanishClip: {fileID: 32900000, guid: cd70c4826c127b84ca8f0c8a188e0211, type: 3}
   defaultLocaleCode: es
-  targetSceneName: Mapa_completo
+  targetSceneName: Nivel_1
 --- !u!114 &1522754681
 MonoBehaviour:
   m_ObjectHideFlags: 0
