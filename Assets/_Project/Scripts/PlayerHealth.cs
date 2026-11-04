@@ -15,7 +15,7 @@ public class PlayerHealth : MonoBehaviour
     [SerializeField] private float invincibilityDuration = 1f;
 
     public int MaxHealth => maxHealth;
-    public int CurrentHealth { get; private set; }
+    public int CurrentHealth { get; private set; } = 5;
     public bool IsDead => CurrentHealth <= 0;
 
     // payload: (currentHealth, maxHealth)
@@ -26,7 +26,18 @@ public class PlayerHealth : MonoBehaviour
 
     private void Awake()
     {
+        if (CurrentHealth <= 0)
+        {
+            CurrentHealth = maxHealth;
+        }
+    }
+
+    /// <summary>Restaura la salud completa y cancela el temporizador de invencibilidad.</summary>
+    public void RestaurarVidaCompleta()
+    {
         CurrentHealth = maxHealth;
+        _invincibilityTimer = 0f;
+        OnHealthChanged?.Invoke(CurrentHealth, maxHealth);
     }
 
     private void Update()

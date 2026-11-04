@@ -293,6 +293,19 @@ namespace SudoKill9.EditorTools
 
             cmdAttacks.GarantizarComponentesVisuales();
 
+            // Asignar prefabs de Hovl Studio en WindowsCommandAttacks
+            SerializedObject soCmd = new SerializedObject(cmdAttacks);
+            var p0 = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Procedural fire/Prefabs/Magic fire 0.prefab");
+            var p1 = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Procedural fire/Prefabs/Magic fire 1.prefab");
+            var pRot = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Procedural fire/Prefabs/RotatorPS2.prefab");
+            var pExp = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Procedural fire/Prefabs/Explosion.prefab");
+
+            if (p0 != null && soCmd.FindProperty("prefabMagicFire0") != null) soCmd.FindProperty("prefabMagicFire0").objectReferenceValue = p0;
+            if (p1 != null && soCmd.FindProperty("prefabMagicFire1") != null) soCmd.FindProperty("prefabMagicFire1").objectReferenceValue = p1;
+            if (pRot != null && soCmd.FindProperty("prefabRotatorPS2") != null) soCmd.FindProperty("prefabRotatorPS2").objectReferenceValue = pRot;
+            if (pExp != null && soCmd.FindProperty("prefabExplosion") != null) soCmd.FindProperty("prefabExplosion").objectReferenceValue = pExp;
+            soCmd.ApplyModifiedPropertiesWithoutUndo();
+
             // Asignar referencia cruzada en WindowsBossAI
             SerializedObject soBoss = new SerializedObject(bossAI);
             SerializedProperty cmdProp = soBoss.FindProperty("commandAttacks");
@@ -310,7 +323,7 @@ namespace SudoKill9.EditorTools
             EditorUtility.SetDirty(windowsGO);
             EditorUtility.SetDirty(bossAI);
             EditorUtility.SetDirty(cmdAttacks);
-            Debug.Log("<color=green>[SetupCombatUI]</color> Jefe 'windows' configurado con WindowsBossAI y WindowsCommandAttacks.");
+            Debug.Log("<color=green>[SetupCombatUI]</color> Jefe 'windows' configurado con WindowsBossAI, WindowsCommandAttacks y prefabs de Hovl Studio.");
         }
 
         private static void ConfigurarCanvasCombate()

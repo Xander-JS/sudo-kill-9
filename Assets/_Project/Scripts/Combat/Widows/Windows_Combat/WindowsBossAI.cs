@@ -14,6 +14,20 @@ using SudoKill9.Combat;
 /// - Traslada físicamente al jefe en el escenario cuando el Animator se encuentra en 'Camina', 'Trota' o 'Rum'.
 /// - Implementa IDamageable para reaccionar a impactos y muerte (Hit, Die).
 /// </summary>
+/// <summary>
+/// Estados tácticos de alto nivel para el jefe Windows (HFSM).
+/// </summary>
+public enum BossCombatState
+{
+    Stalking,          // Manteniendo distancia y evaluando
+    Approaching,       // Caminando, trotando o corriendo hacia el jugador
+    MeleeEngage,       // Ejecutando combo cuerpo a cuerpo (Patada, Izquiedazo, Tornado, Salto)
+    ExecutingSpecial,  // Ejecutando habilidad especial (Kamehameha, Firewall, Taskkill, SaltaLoco)
+    VulnerableTired,   // Ventana de castigo en PoseCansado
+    HitReaction,       // Reacción a impacto
+    Dead
+}
+
 public class WindowsBossAI : MonoBehaviour, IDamageable
 {
     [Header("Objetivo (Target)")]
@@ -73,6 +87,18 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
 
     [Tooltip("Referencia opcional a WindowsCommandAttacks para coordinar ataques y estados especiales.")]
     [SerializeField] private WindowsCommandAttacks commandAttacks;
+
+    [Header("Máquina de Estados Táctica (HFSM)")]
+    [Tooltip("Estado táctico actual del jefe calculado en tiempo real.")]
+    [SerializeField] private BossCombatState estadoCombate = BossCombatState.Stalking;
+
+    [Header("Navegación Inteligente (NavMesh)")]
+    [Tooltip("Componente NavMeshAgent opcional para desplazamiento inteligente sorteando obstáculos.")]
+    [SerializeField] private UnityEngine.AI.NavMeshAgent navAgent;
+
+    [Header("Diálogos y Provocaciones (Gemini / Local)")]
+    [Tooltip("Módulo híbrido de diálogos y burlas satíricas.")]
+    [SerializeField] private WindowsAIGeminiDialogue geminiDialogue;
 
     // Eventos estáticos de salud, fase y muerte del jefe para la UI
     public static event System.Action<float, float> OnBossHealthChanged;
@@ -138,6 +164,11 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
             commandAttacks = GetComponent<WindowsCommandAttacks>();
             if (commandAttacks == null) commandAttacks = gameObject.AddComponent<WindowsCommandAttacks>();
         }
+        if (geminiDialogue == null)
+        {
+            geminiDialogue = GetComponent<WindowsAIGeminiDialogue>();
+            if (geminiDialogue == null) geminiDialogue = gameObject.AddComponent<WindowsAIGeminiDialogue>();
+        }
         ActualizarFaseActual(false);
 
         if (animator == null)
@@ -161,6 +192,11 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
         {
             commandAttacks = GetComponent<WindowsCommandAttacks>();
             if (commandAttacks == null) commandAttacks = gameObject.AddComponent<WindowsCommandAttacks>();
+        }
+        if (geminiDialogue == null)
+        {
+            geminiDialogue = GetComponent<WindowsAIGeminiDialogue>();
+            if (geminiDialogue == null) geminiDialogue = gameObject.AddComponent<WindowsAIGeminiDialogue>();
         }
         ActualizarFaseActual(false);
         OnBossHealthChanged?.Invoke(currentHealth, maxHealth);
@@ -189,7 +225,24 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
 
     private void OnValidate()
     {
+#if UNITY_EDITOR
+        if (!Application.isPlaying)
+        {
+            UnityEditor.EditorApplication.delayCall += () =>
+            {
+                if (this != null && gameObject != null)
+                {
+                    GarantizarComponentesFisicos();
+                }
+            };
+        }
+        else
+        {
+            GarantizarComponentesFisicos();
+        }
+#else
         GarantizarComponentesFisicos();
+#endif
 
         if (Application.isPlaying && animator != null)
         {
@@ -233,11 +286,25 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
         rb.isKinematic = true;
         rb.useGravity = false;
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
+
+        if (navAgent == null)
+        {
+            navAgent = GetComponent<UnityEngine.AI.NavMeshAgent>();
+        }
+        if (navAgent != null)
+        {
+            navAgent.stoppingDistance = stoppingDistance;
+            navAgent.updateRotation = false;
+        }
     }
 
     private void Update()
     {
-        if (isDead) return;
+        if (isDead)
+        {
+            ActualizarEstadoCombate();
+            return;
+        }
 
         // Validar y asegurar referencia activa del jugador (redirige a LinuxCombatIK si target es nulo o un contenedor inactivo)
         if (target == null || !target.gameObject.activeInHierarchy || target.GetComponent<LinuxCombatIK>() == null)
@@ -270,6 +337,54 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
 
         // 4. DESPLAZAMIENTO SEGÚN LA ANIMACIÓN ACTIVA DEL ANIMATOR
         GestionarMovimientoSegunAnimacion();
+
+        // 5. EVALUACIÓN DE ESTADO TÁCTICO HFSM
+        ActualizarEstadoCombate();
+    }
+
+    private void ActualizarEstadoCombate()
+    {
+        if (isDead)
+        {
+            estadoCombate = BossCombatState.Dead;
+            return;
+        }
+
+        if (commandAttacks != null && commandAttacks.EstaExhausto)
+        {
+            estadoCombate = BossCombatState.VulnerableTired;
+            return;
+        }
+
+        if (commandAttacks != null && commandAttacks.EstaEjecutandoAtaqueEspecial)
+        {
+            estadoCombate = BossCombatState.ExecutingSpecial;
+            return;
+        }
+
+        if (IsStateOrTransitioningTo("Hit"))
+        {
+            estadoCombate = BossCombatState.HitReaction;
+            return;
+        }
+
+        if (IsStateOrTransitioningTo("Patada") || 
+            IsStateOrTransitioningTo("Ataque_Patada") || 
+            IsStateOrTransitioningTo("Tornado") || 
+            IsStateOrTransitioningTo("Izquiedazo") || 
+            IsStateOrTransitioningTo("Salto"))
+        {
+            estadoCombate = BossCombatState.MeleeEngage;
+            return;
+        }
+
+        if (IsLocomotionState())
+        {
+            estadoCombate = BossCombatState.Approaching;
+            return;
+        }
+
+        estadoCombate = BossCombatState.Stalking;
     }
 
     private void RotarHaciaJugador()
@@ -293,7 +408,11 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
     private void GestionarMovimientoSegunAnimacion()
     {
         if (!moverHaciaObjetivo || animator == null) return;
-        if (commandAttacks != null && commandAttacks.EstaEjecutandoAtaqueEspecial) return;
+        if (commandAttacks != null && commandAttacks.EstaEjecutandoAtaqueEspecial)
+        {
+            DetenerAgenteNavMesh();
+            return;
+        }
 
         if (IsStateOrTransitioningTo("Camina"))
         {
@@ -321,35 +440,65 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
         }
         else if (IsStateOrTransitioningTo("Se prepara para atacar"))
         {
+            DetenerAgenteNavMesh();
             golpeAplicadoEnCiclo = false;
             animacionActual = "Se prepara para atacar";
         }
         else if (IsStateOrTransitioningTo("Ataque_Patada"))
         {
+            DetenerAgenteNavMesh();
             animacionActual = "Ataque_Patada";
             VerificarImpactoAtaqueCuerpoACuerpo("Ataque_Patada", 3.2f, 1f, 0.20f, 0.75f);
         }
         else if (IsStateOrTransitioningTo("Tornado"))
         {
+            DetenerAgenteNavMesh();
             animacionActual = "Tornado";
             VerificarImpactoAtaqueCuerpoACuerpo("Tornado", 3.5f, 1f, 0.15f, 0.80f);
         }
         else if (IsStateOrTransitioningTo("Patada"))
         {
+            DetenerAgenteNavMesh();
             animacionActual = "Patada";
             VerificarImpactoAtaqueCuerpoACuerpo("Patada", 2.3f, 1f, 0.20f, 0.75f);
         }
+        else if (IsStateOrTransitioningTo("Izquiedazo"))
+        {
+            DetenerAgenteNavMesh();
+            animacionActual = "Izquiedazo";
+            VerificarImpactoAtaqueCuerpoACuerpo("Izquiedazo", 2.2f, 1f, 0.20f, 0.70f);
+        }
+        else if (IsStateOrTransitioningTo("Mueve_Cuello"))
+        {
+            DetenerAgenteNavMesh();
+            golpeAplicadoEnCiclo = false;
+            animacionActual = "Mueve_Cuello";
+        }
+        else if (IsStateOrTransitioningTo("Se rie"))
+        {
+            DetenerAgenteNavMesh();
+            golpeAplicadoEnCiclo = false;
+            animacionActual = "Se rie";
+        }
+        else if (IsStateOrTransitioningTo("PoseCansado"))
+        {
+            DetenerAgenteNavMesh();
+            animacionActual = "PoseCansado";
+        }
         else if (IsStateOrTransitioningTo("Hit"))
         {
+            DetenerAgenteNavMesh();
             animacionActual = "Hit";
             // Pausar traslación mientras se reproduce el retroceso del impacto
         }
         else if (IsStateOrTransitioningTo("Die"))
         {
+            DetenerAgenteNavMesh();
             animacionActual = "Die";
         }
         else
         {
+            DetenerAgenteNavMesh();
             animacionActual = "Otro";
         }
     }
@@ -382,6 +531,12 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
                 if (danable != null && !danable.IsDead)
                 {
                     danable.TakeDamage(dano);
+
+                    if (geminiDialogue != null)
+                    {
+                        geminiDialogue.SolicitarDialogo(WindowsAIGeminiDialogue.DialogueContext.GolpeConectado, $"Windows conectó {ataque} contra Tux.");
+                    }
+
 #if UNITY_EDITOR
                     Debug.Log($"<color=orange>[WindowsBossAI]</color> ¡Impacto físico ({ataque}) conectó a Tux! Daño: {dano}");
 #endif
@@ -415,13 +570,37 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
     {
         if (target == null) return;
 
-        // Frenar si ya está en la distancia mínima de contacto
-        if (currentDistanceToTarget <= stoppingDistance) return;
+        if (navAgent != null && navAgent.enabled && navAgent.isOnNavMesh)
+        {
+            if (currentDistanceToTarget <= stoppingDistance)
+            {
+                if (!navAgent.isStopped) navAgent.isStopped = true;
+            }
+            else
+            {
+                if (navAgent.isStopped) navAgent.isStopped = false;
+                navAgent.speed = velocidad;
+                navAgent.SetDestination(target.position);
+            }
+        }
+        else
+        {
+            // Frenar si ya está en la distancia mínima de contacto
+            if (currentDistanceToTarget <= stoppingDistance) return;
 
-        Vector3 targetPos = target.position;
-        targetPos.y = transform.position.y; // Mantener la misma altura
+            Vector3 targetPos = target.position;
+            targetPos.y = transform.position.y; // Mantener la misma altura
 
-        transform.position = Vector3.MoveTowards(transform.position, targetPos, velocidad * Time.deltaTime);
+            transform.position = Vector3.MoveTowards(transform.position, targetPos, velocidad * Time.deltaTime);
+        }
+    }
+
+    private void DetenerAgenteNavMesh()
+    {
+        if (navAgent != null && navAgent.enabled && navAgent.isOnNavMesh)
+        {
+            if (!navAgent.isStopped) navAgent.isStopped = true;
+        }
     }
 
     // ========================================================================= //
@@ -432,6 +611,7 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
     {
         if (isDead) return;
 
+        if (commandAttacks == null) commandAttacks = GetComponent<WindowsCommandAttacks>();
         float danoFinal = Mathf.Abs(amount);
         if (commandAttacks != null && commandAttacks.EstaExhausto)
         {
@@ -483,6 +663,7 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
     /// </summary>
     public void RecibirDisparo(float dano, Vector3 puntoImpacto, Vector3 direccionBala)
     {
+        if (commandAttacks == null) commandAttacks = GetComponent<WindowsCommandAttacks>();
         if (commandAttacks != null && commandAttacks.NotificarImpactoEnEscudo(null, puntoImpacto, direccionBala))
         {
             return; // Bloqueado frontalmente por el firewall de Windows
@@ -535,7 +716,12 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
     {
         currentHealth = Mathf.Max(0f, nuevaVida);
         isDead = currentHealth <= 0f;
+        if (!isDead && navAgent != null && !navAgent.enabled)
+        {
+            navAgent.enabled = true;
+        }
         ActualizarFaseActual(true);
+        ActualizarEstadoCombate();
         OnBossHealthChanged?.Invoke(currentHealth, maxHealth);
     }
 
@@ -543,6 +729,13 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
     {
         isDead = true;
         currentHealth = 0f;
+        DetenerAgenteNavMesh();
+        if (navAgent != null && navAgent.enabled && navAgent.isOnNavMesh)
+        {
+            navAgent.enabled = false;
+        }
+        ActualizarEstadoCombate();
+        if (commandAttacks == null) commandAttacks = GetComponent<WindowsCommandAttacks>();
         if (commandAttacks != null)
         {
             commandAttacks.LimpiarAtaquesActivosPublico();

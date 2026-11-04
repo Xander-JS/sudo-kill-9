@@ -30,6 +30,7 @@ namespace SudoKill9.EditorTools
                 AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
                 WireLinuxCameraPivotIfOpen(silent: true);
                 WireSceneIfOpen(silent: true);
+                EjecutarVerificacionAutomatica();
             };
         }
 
@@ -50,7 +51,12 @@ namespace SudoKill9.EditorTools
                 sb.AppendLine($"[TEST 1] LinuxCombatIK.velocidad = {combatIK.velocidad} m/s (Caminata lenta/moderada: {(vOk ? "PASS" : "FAIL")})");
                 exitoTotal &= vOk;
 
+                PlayerHealth phLinux = combatIK.GetComponent<PlayerHealth>() ?? combatIK.GetComponentInParent<PlayerHealth>();
+                if (phLinux != null) phLinux.RestaurarVidaCompleta();
+
                 bool combatTestsOk = combatIK.EjecutarPruebasCalidadCombate();
+                if (phLinux != null) phLinux.RestaurarVidaCompleta();
+
                 sb.AppendLine($"[TEST 2] LinuxCombatIK.EjecutarPruebasCalidadCombate (7-14) = {(combatTestsOk ? "PASS" : "FAIL")}");
                 exitoTotal &= combatTestsOk;
             }
@@ -143,7 +149,7 @@ namespace SudoKill9.EditorTools
                 try
                 {
                     WindowsBossAI cAI = critDummy.AddComponent<WindowsBossAI>();
-                    WindowsCommandAttacks cCmd = critDummy.AddComponent<WindowsCommandAttacks>();
+                    WindowsCommandAttacks cCmd = critDummy.GetComponent<WindowsCommandAttacks>() ?? critDummy.AddComponent<WindowsCommandAttacks>();
                     cAI.GarantizarComponentesFisicos();
                     // Simular daño normal
                     float vidaNormalPre = cAI.CurrentHealth;
@@ -240,7 +246,7 @@ namespace SudoKill9.EditorTools
             try
             {
                 var sAI = shieldDummy.AddComponent<WindowsBossAI>();
-                var sCmd = shieldDummy.AddComponent<WindowsCommandAttacks>();
+                var sCmd = shieldDummy.GetComponent<WindowsCommandAttacks>() ?? shieldDummy.AddComponent<WindowsCommandAttacks>();
                 sAI.GarantizarComponentesFisicos();
                 sCmd.GarantizarComponentesVisuales();
 
@@ -271,7 +277,7 @@ namespace SudoKill9.EditorTools
             try
             {
                 var hAI = hyperDummy.AddComponent<WindowsBossAI>();
-                var hCmd = hyperDummy.AddComponent<WindowsCommandAttacks>();
+                var hCmd = hyperDummy.GetComponent<WindowsCommandAttacks>() ?? hyperDummy.AddComponent<WindowsCommandAttacks>();
                 hAI.GarantizarComponentesFisicos();
 
                 var campoEx = typeof(WindowsCommandAttacks).GetField("estaExhausto", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
@@ -291,7 +297,7 @@ namespace SudoKill9.EditorTools
             try
             {
                 var dAI = deathCleanDummy.AddComponent<WindowsBossAI>();
-                var dCmd = deathCleanDummy.AddComponent<WindowsCommandAttacks>();
+                var dCmd = deathCleanDummy.GetComponent<WindowsCommandAttacks>() ?? deathCleanDummy.AddComponent<WindowsCommandAttacks>();
                 dAI.GarantizarComponentesFisicos();
 
                 var campoRayo = typeof(WindowsCommandAttacks).GetField("estaDisparandoRayo", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
@@ -321,6 +327,81 @@ namespace SudoKill9.EditorTools
             finally
             {
                 Object.DestroyImmediate(playerDeadDummy);
+            }
+
+            // 18. Verificar Prefabs Reales de Hovl Studio para Ataques Visuales
+            var p0 = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Procedural fire/Prefabs/Magic fire 0.prefab");
+            var p1 = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Procedural fire/Prefabs/Magic fire 1.prefab");
+            var pRot = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Procedural fire/Prefabs/RotatorPS2.prefab");
+            var pExp = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Procedural fire/Prefabs/Explosion.prefab");
+            bool prefabsHovlOk = p0 != null && p1 != null && pRot != null && pExp != null;
+            sb.AppendLine($"[TEST 18] Prefabs Hovl Studio disponibles (MF0={p0 != null}, MF1={p1 != null}, Rotator={pRot != null}, Exp={pExp != null}) = {(prefabsHovlOk ? "PASS" : "FAIL")}");
+            exitoTotal &= prefabsHovlOk;
+
+            // 19. Verificar Lógica y Componente de MagicFire0AereoController (Captura de posición y esquive)
+            GameObject mf0Dummy = new GameObject("MF0_Dummy_Test");
+            try
+            {
+                var mf0Ctrl = mf0Dummy.AddComponent<SudoKill9.Combat.MagicFire0AereoController>();
+                Vector3 posCapturada = new Vector3(5f, 0f, 5f);
+                mf0Ctrl.Inicializar(posCapturada, null, null, null, altura: 12f, velocidad: 15f, radio: 3f);
+                bool alturaOk = mf0Dummy.transform.position.y >= 10f;
+                bool rotOk = mf0Dummy.transform.rotation.eulerAngles.x > 80f;
+                bool mf0LogicaOk = alturaOk && rotOk && mf0Ctrl.RadioImpacto == 3f;
+                sb.AppendLine($"[TEST 19] MagicFire0AereoController (Altura={alturaOk}, Orientación={rotOk}, Radio={mf0Ctrl.RadioImpacto}) = {(mf0LogicaOk ? "PASS" : "FAIL")}");
+                exitoTotal &= mf0LogicaOk;
+            }
+            finally
+            {
+                Object.DestroyImmediate(mf0Dummy);
+            }
+
+            // 20. Verificar Lógica y Componente de MagicFire1HomingController (Seguimiento 3s y velocidad)
+            GameObject mf1Dummy = new GameObject("MF1_Dummy_Test");
+            try
+            {
+                var mf1Ctrl = mf1Dummy.AddComponent<SudoKill9.Combat.MagicFire1HomingController>();
+                mf1Ctrl.Inicializar(null, null, null, velocidad: 15f, giro: 160f, duracion: 3.0f, contacto: 1.1f, radioExp: 2.8f);
+                bool homingParamsOk = mf1Ctrl.DuracionMaxima == 3.0f && mf1Ctrl.VelocidadPersecucion == 15f && mf1Ctrl.RadioExplosion == 2.8f;
+                sb.AppendLine($"[TEST 20] MagicFire1HomingController (Duración 3s={mf1Ctrl.DuracionMaxima == 3f}, Vel={mf1Ctrl.VelocidadPersecucion}, RadioExp={mf1Ctrl.RadioExplosion}) = {(homingParamsOk ? "PASS" : "FAIL")}");
+                exitoTotal &= homingParamsOk;
+            }
+            finally
+            {
+                Object.DestroyImmediate(mf1Dummy);
+            }
+
+            // 21. Verificar Tornado RotatorPS2 (Desactivación de colliders y seguimiento)
+            GameObject rotDummy = new GameObject("Rotator_Dummy_Test");
+            try
+            {
+                var col = rotDummy.AddComponent<BoxCollider>();
+                col.isTrigger = true;
+                var rotCtrl = rotDummy.AddComponent<SudoKill9.Combat.RotatorPS2TornadoController>();
+                rotCtrl.Inicializar(rotDummy.transform, duracion: 5.0f);
+                bool colliderDesactivado = !col.enabled;
+                sb.AppendLine($"[TEST 21] RotatorPS2TornadoController (Collider desactivado={colliderDesactivado}) = {(colliderDesactivado ? "PASS" : "FAIL")}");
+                exitoTotal &= colliderDesactivado;
+            }
+            finally
+            {
+                Object.DestroyImmediate(rotDummy);
+            }
+
+            // 22. Verificar ExplosionEffectController (Inicialización y control de escala)
+            GameObject expDummy = new GameObject("Exp_Dummy_Test");
+            expDummy.hideFlags = HideFlags.HideAndDontSave;
+            try
+            {
+                var expCtrl = expDummy.AddComponent<SudoKill9.Combat.ExplosionEffectController>();
+                expCtrl.Inicializar(Vector3.one * 1.5f, 2.0f);
+                bool escalaOk = expDummy.transform.localScale == Vector3.one * 1.5f;
+                sb.AppendLine($"[TEST 22] ExplosionEffectController (Inicialización y escala={escalaOk}) = {(escalaOk ? "PASS" : "FAIL")}");
+                exitoTotal &= escalaOk;
+            }
+            finally
+            {
+                Object.DestroyImmediate(expDummy);
             }
 
             sb.AppendLine($"RESULTADO_FINAL={(exitoTotal ? "PASSED" : "FAILED")}");

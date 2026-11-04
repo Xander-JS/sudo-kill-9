@@ -28,6 +28,9 @@ namespace SudoKill9.UI
         [Tooltip("Duración activa de la pantalla azul antes del fade-out.")]
         [SerializeField] private float duracionGlitch = 1.5f;
 
+        [Tooltip("Duración del desvanecimiento suave de entrada.")]
+        [SerializeField] private float duracionFadeIn = 0.12f;
+
         [Tooltip("Duración del desvanecimiento suave de salida.")]
         [SerializeField] private float duracionFadeOut = 0.35f;
 
@@ -75,34 +78,75 @@ namespace SudoKill9.UI
         {
             WindowsCommandAttacks.OnBSODTriggered -= HandleBSODTriggered;
             WindowsCommandAttacks.OnBSODTriggered += HandleBSODTriggered;
+            WindowsCommandAttacks.OnBSODTriggeredWithDuration -= HandleBSODTriggeredWithDuration;
+            WindowsCommandAttacks.OnBSODTriggeredWithDuration += HandleBSODTriggeredWithDuration;
         }
 
         private void OnDisable()
         {
             WindowsCommandAttacks.OnBSODTriggered -= HandleBSODTriggered;
+            WindowsCommandAttacks.OnBSODTriggeredWithDuration -= HandleBSODTriggeredWithDuration;
         }
 
         private void HandleBSODTriggered()
         {
-            ActivarBSOD();
+            ActivarBSOD(5.0f);
         }
 
-        public static void Trigger()
+        private void HandleBSODTriggeredWithDuration(float duracion)
+        {
+            ActivarBSOD(duracion);
+        }
+
+        public static void DispararBSOD(float duracion = 5.0f)
         {
             if (Instance != null)
             {
-                Instance.ActivarBSOD();
+                Instance.ActivarBSOD(duracion);
             }
         }
 
-        public void ActivarBSOD()
+        public static void Trigger(float duracion = 5.0f)
         {
-            if (corrutinaActiva != null) StopCoroutine(corrutinaActiva);
-            corrutinaActiva = StartCoroutine(RutinaBSOD());
+            if (Instance != null)
+            {
+                Instance.ActivarBSOD(duracion);
+            }
         }
 
-        private IEnumerator RutinaBSOD()
+        public void ActivarBSOD(float duracion = -1f)
         {
+            float dur = duracion > 0f ? duracion : duracionGlitch;
+            if (corrutinaActiva != null) StopCoroutine(corrutinaActiva);
+            corrutinaActiva = StartCoroutine(RutinaBSOD(dur));
+        }
+
+        private IEnumerator RutinaBSOD(float duracionEfecto)
+        {
+            if (rectTransform != null)
+            {
+                rectTransform.sizeDelta = new Vector2(100f, 100f);
+            }
+
+            if (audioSource == null) audioSource = GetComponent<AudioSource>();
+            if (audioSource != null && sonidoGlitch != null)
+            {
+                audioSource.PlayOneShot(sonidoGlitch);
+            }
+
+            // 1. Entrada visual controlada (Fade-in rápido y suave)
+            float transcurridoIn = 0f;
+            while (transcurridoIn < duracionFadeIn)
+            {
+                transcurridoIn += Time.unscaledDeltaTime;
+                float tIn = transcurridoIn / duracionFadeIn;
+                if (canvasGroup != null)
+                {
+                    canvasGroup.alpha = Mathf.Lerp(0f, 1f, tIn);
+                }
+                yield return null;
+            }
+
             if (canvasGroup != null)
             {
                 canvasGroup.alpha = 1f;
@@ -120,7 +164,7 @@ namespace SudoKill9.UI
                 audioSource.PlayOneShot(sonidoGlitch);
             }
 
-            float tiempoRestante = duracionGlitch;
+            float tiempoRestante = duracionEfecto;
 
             while (tiempoRestante > 0f)
             {

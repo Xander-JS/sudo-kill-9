@@ -7,14 +7,17 @@ using SudoKill9.Combat;
 /// 1. Esquive Dinámico con 'SaltaLoco':
 ///    Detecta proyectiles entrantes y realiza una finta lateral errática.
 /// 2. Comando 'taskkill':
-///    Aplica un debuff de ralentización al jugador Tux (30% velocidad por 2.5s).
+///    Aplica un debuff de ralentización al jugador Linux Tux (30% velocidad por 2.5s).
 /// 3. Comando 'netsh advfirewall':
 ///    Levanta un escudo holográfico frontal que bloquea/desvía proyectiles durante 4s.
-/// 4. Gran Kamehameha de PowerShell:
-///    Carga telegrafiada de 1.8s -> Rayo continuo de energía por 2.5s ->
-///    Ventana de vulnerabilidad en 'PoseCansado' durante 3.0s (1.5x daño crítico).
-/// 5. Evento BSOD (Pantalla Azul de la Muerte):
-///    Al bajar del 15% de vida, se ríe y desata la pantalla azul crítica por 1.5s.
+/// 4. ATAQUE 1: Magic Fire 0 + Explosion + RotatorPS2:
+///    Ataque aéreo telegrafiado que cae sobre la posición inicial de Linux (permitiendo esquivar).
+///    Si impacta, detona 'Explosion', activa BSOD durante 5 segundos y desata el tornado 'RotatorPS2'.
+/// 5. ATAQUE 2: Magic Fire 1 (Proyectil Homing de Persecución):
+///    Dispara 'Magic Fire 1' persiguiendo fluidamente a Linux durante máx 3 segundos.
+///    Al impactar o expirar el tiempo, detona 'Explosion', dejando a Windows vulnerable en 'PoseCansado' (1.5x daño).
+/// 6. Evento BSOD (Pantalla Azul de la Muerte):
+///    Efecto visual cinemático del sistema de pantalla azul (duración exacta 5s).
 /// </summary>
 public class WindowsCommandAttacks : MonoBehaviour
 {
@@ -28,8 +31,24 @@ public class WindowsCommandAttacks : MonoBehaviour
     /// <summary>Evento emitido al dispararse la Pantalla Azul de la Muerte.</summary>
     public static event System.Action OnBSODTriggered;
 
+    /// <summary>Evento emitido al dispararse la Pantalla Azul con duración personalizada.</summary>
+    public static event System.Action<float> OnBSODTriggeredWithDuration;
+
+    /// <summary>Emite el evento de BSOD con la duración deseada sin disparos redundantes.</summary>
+    public static void NotificarBSOD(float duracion = 5.0f)
+    {
+        if (OnBSODTriggeredWithDuration != null)
+        {
+            OnBSODTriggeredWithDuration.Invoke(duracion);
+        }
+        else
+        {
+            OnBSODTriggered?.Invoke();
+        }
+    }
+
     // ========================================================================= //
-    // CONFIGURACIÓN DE ESQUIVE (SaltaLoco)                                      //
+    // 1. CONFIGURACIÓN DE ESQUIVE (SaltaLoco)                                   //
     // ========================================================================= //
 
     [Header("1. Esquive Dinámico (SaltaLoco)")]
@@ -52,7 +71,7 @@ public class WindowsCommandAttacks : MonoBehaviour
     private bool estaEsquivando = false;
 
     // ========================================================================= //
-    // CONFIGURACIÓN DE TASKKILL                                                 //
+    // 2. CONFIGURACIÓN DE TASKKILL                                              //
     // ========================================================================= //
 
     [Header("2. Comando taskkill (Ralentización)")]
@@ -71,7 +90,7 @@ public class WindowsCommandAttacks : MonoBehaviour
     private float temporizadorTaskkill = 8.0f;
 
     // ========================================================================= //
-    // CONFIGURACIÓN DE NETSH FIREWALL                                            //
+    // 3. CONFIGURACIÓN DE NETSH FIREWALL                                        //
     // ========================================================================= //
 
     [Header("3. Comando netsh firewall (Escudo Frontal)")]
@@ -92,71 +111,149 @@ public class WindowsCommandAttacks : MonoBehaviour
     private Coroutine corrutinaFirewall;
 
     // ========================================================================= //
-    // CONFIGURACIÓN DE POWERSHELL KAMEHAMEHA                                    //
+    // 4. ATAQUE 1: MAGIC FIRE 0 + EXPLOSION + ROTATORPS2                        //
     // ========================================================================= //
 
-    [Header("4. Rayo Kamehameha de PowerShell")]
-    [Tooltip("Habilita el gran rayo continuo de energía en Fase 3.")]
+    [Header("4. Ataque 1: Magic Fire 0 (Aéreo + Esquive + BSOD + Tornado)")]
+    [Tooltip("Habilita el ataque aéreo orbital telegrafiado.")]
+    [SerializeField] private bool magicFire0Habilitado = true;
+
+    [Tooltip("Intervalo en segundos entre lanzamientos de Magic Fire 0.")]
+    [SerializeField] private float intervaloMagicFire0 = 11.0f;
+
+    [Tooltip("Fase mínima de combate de Windows para activar Magic Fire 0.")]
+    [SerializeField] private int faseMinimaMagicFire0 = 1;
+
+    [Tooltip("Altura sobre el punto capturado desde donde cae Magic Fire 0 (m).")]
+    [SerializeField] private float alturaInicialMagicFire0 = 14.0f;
+
+    [Tooltip("Velocidad de descenso de Magic Fire 0 (m/s).")]
+    [SerializeField] private float velocidadCaidaMagicFire0 = 16.0f;
+
+    [Tooltip("Radio de la zona de impacto para verificar si Linux esquivó o recibió el impacto.")]
+    [SerializeField] private float radioImpactoMagicFire0 = 3.2f;
+
+    [Tooltip("Daño infligido por Magic Fire 0 al acertar.")]
+    [SerializeField] private float danoMagicFire0 = 1.0f;
+
+    [Tooltip("Duración de la Pantalla Azul (BSOD) en segundos activada por el impacto.")]
+    [SerializeField] private float duracionBSODMagicFire0 = 5.0f;
+
+    [Tooltip("Duración del tornado RotatorPS2 alrededor de Linux.")]
+    [SerializeField] private float duracionRotatorPS2 = 5.0f;
+
+    [Tooltip("Escala inicial del tornado RotatorPS2.")]
+    [SerializeField] private Vector3 escalaRotatorPS2 = new Vector3(1.2f, 1.2f, 1.2f);
+
+    private float temporizadorMagicFire0 = 4.0f;
+    private bool estaEjecutandoMagicFire0 = false;
+    private GameObject instanciaMagicFire0Activa;
+
+    // ========================================================================= //
+    // 5. ATAQUE 2: MAGIC FIRE 1 (Proyectil Homing de Persecución)               //
+    // ========================================================================= //
+
+    [Header("5. Ataque 2: Magic Fire 1 (Proyectil Homing + Exhausto)")]
+    [Tooltip("Habilita el proyectil telegrafiado de persecución homing.")]
+    [SerializeField] private bool magicFire1Habilitado = true;
+
+    [Tooltip("Compatibilidad con inspector previo de Kamehameha.")]
     [SerializeField] private bool kamehamehaHabilitado = true;
 
-    [Tooltip("Intervalo en segundos entre disparos del Kamehameha en Fase 3.")]
+    [Tooltip("Intervalo en segundos entre disparos de Magic Fire 1.")]
+    [SerializeField] private float intervaloMagicFire1 = 14.0f;
     [SerializeField] private float intervaloKamehameha = 14.0f;
 
-    [Tooltip("Tiempo de carga telegrafiado antes de disparar el rayo.")]
-    [SerializeField] private float tiempoCarga = 1.8f;
+    [Tooltip("Fase mínima de combate para activar Magic Fire 1.")]
+    [SerializeField] private int faseMinimaMagicFire1 = 2;
 
-    [Tooltip("Duración activa del rayo destructivo.")]
-    [SerializeField] private float duracionDisparo = 2.5f;
+    [Tooltip("Tiempo de carga telegrafiado antes de disparar el proyectil (segundos).")]
+    [SerializeField] private float tiempoCarga = 1.6f;
 
-    [Tooltip("Tiempo en PoseCansado donde Windows recibe 1.5x de daño crítico.")]
+    [Tooltip("Velocidad de avance lineal de Magic Fire 1 (m/s).")]
+    [SerializeField] private float velocidadPersecucionMagicFire1 = 15.0f;
+
+    [Tooltip("Velocidad angular de giro para arquear suavemente (grados/s).")]
+    [SerializeField] private float velocidadGiroMagicFire1 = 160.0f;
+
+    [Tooltip("Duración máxima de persecución activa de Magic Fire 1 (segundos).")]
+    [SerializeField] private float duracionHomingMagicFire1 = 3.0f;
+
+    [Tooltip("Radio de proximidad para registrar impacto directo sobre Linux.")]
+    [SerializeField] private float radioContactoMagicFire1 = 1.1f;
+
+    [Tooltip("Radio de la explosión al agotarse los 3 segundos.")]
+    [SerializeField] private float radioExplosionMagicFire1 = 2.8f;
+
+    [Tooltip("Daño infligido por el impacto o explosión de Magic Fire 1.")]
+    [SerializeField] private float danoMagicFire1 = 1.0f;
+
+    [Tooltip("Tiempo en PoseCansado donde Windows queda vulnerable a 1.5x daño crítico (segundos).")]
     [SerializeField] private float tiempoExhausto = 3.0f;
 
-    [Tooltip("Daño por pulso telegrafiado que causa el rayo directo.")]
-    [SerializeField] private float danoPorPulso = 1.0f;
+    [Tooltip("Escala del prefab Explosion para los ataques.")]
+    [SerializeField] private Vector3 escalaExplosion = new Vector3(1.5f, 1.5f, 1.5f);
 
-    [Tooltip("Alcance máximo del haz de energía.")]
-    [SerializeField] private float alcanceRayo = 28.0f;
+    [Tooltip("Desplazamiento local del punto de emisión respecto al boss (X, Y, Z).")]
+    [SerializeField] private Vector3 offsetDisparo = new Vector3(0f, 1.3f, 2.4f);
 
-    [Tooltip("Radio del cilindro de colisión del rayo.")]
-    [SerializeField] private float radioRayo = 1.0f;
+    [Header("5.1 Animaciones de Combate")]
+    [Tooltip("Animación durante la carga del ataque.")]
+    [SerializeField] private string animacionCarga = "Se prepara para atacar";
+    [SerializeField] private float transicionCarga = 0.15f;
 
-    [Tooltip("Guía láser telegrafiada durante la carga.")]
-    [SerializeField] private LineRenderer guiaLaserCarga;
+    [Tooltip("Animación durante el lanzamiento del proyectil.")]
+    [SerializeField] private string animacionDisparo = "Grito";
+    [SerializeField] private float transicionDisparo = 0.10f;
 
-    [Tooltip("Renderizado visual del rayo de energía Kamehameha.")]
-    [SerializeField] private LineRenderer hazKamehameha;
+    [Tooltip("Animación de agotamiento/vulnerabilidad tras disparar.")]
+    [SerializeField] private string animacionExhausto = "PoseCansado";
+    [SerializeField] private float transicionExhausto = 0.15f;
 
-    [Header("Efectos Visuales Hovl Studio (Procedural Fire / Plasma)")]
-    [Tooltip("Prefab del vórtice de carga telegrafiado (ej. RotatorPS1 o Magic fire pro blue).")]
-    [SerializeField] private GameObject prefabEfectoCarga;
+    [Tooltip("Animación al recuperarse de la vulnerabilidad.")]
+    [SerializeField] private string animacionRecuperacion = "Se prepara para atacar";
+    [SerializeField] private float transicionRecuperacion = 0.20f;
 
-    [Tooltip("Prefab del chorro/haz destructivo de plasma (ej. Magic fire pro blue).")]
-    [SerializeField] private GameObject prefabEfectoRayo;
-
-    [Tooltip("Prefab del efecto de impacto cuando el rayo colisiona (ej. Explosion).")]
-    [SerializeField] private GameObject prefabImpactoRayo;
-
-    private GameObject instanciaEfectoCarga;
-    private GameObject instanciaEfectoRayo;
-    private GameObject instanciaImpactoRayo;
-
-    private float temporizadorKamehameha = 5.0f;
-    private float intervaloDanioRayo = 0.5f;
-    private float temporizadorPulsoRayo = 0f;
+    // Campos de compatibilidad con reflexión y tests existentes
     private bool estaCargandoRayo = false;
     private bool estaDisparandoRayo = false;
     private bool estaExhausto = false;
-    private Coroutine corrutinaKamehameha;
+    private bool estaEjecutandoMagicFire1 = false;
+    private GameObject instanciaMagicFire1Activa;
+    private Coroutine corrutinaMagicFire1;
 
     // ========================================================================= //
-    // CONFIGURACIÓN DE EVENTO BSOD                                              //
+    // 6. PREFABS DE EFECTOS HOVL STUDIO                                         //
     // ========================================================================= //
 
-    [Header("5. Pantalla Azul de la Muerte (BSOD)")]
-    [Tooltip("Porcentaje de vida (0 a 1) para activar el crash de pantalla azul.")]
+    [Header("6. Prefabs Reales de Hovl Studio")]
+    [Tooltip("Prefab del Ataque 1 (Caída aérea): Assets/Hovl Studio/Procedural fire/Prefabs/Magic fire 0.prefab")]
+    [SerializeField] private GameObject prefabMagicFire0;
+
+    [Tooltip("Prefab del Ataque 2 (Homing 3s): Assets/Hovl Studio/Procedural fire/Prefabs/Magic fire 1.prefab")]
+    [SerializeField] private GameObject prefabMagicFire1;
+
+    [Tooltip("Prefab del Tornado que rodea a Linux: Assets/Hovl Studio/Procedural fire/Prefabs/RotatorPS2.prefab")]
+    [SerializeField] private GameObject prefabRotatorPS2;
+
+    [Tooltip("Prefab de Impacto/Detonación: Assets/Hovl Studio/Procedural fire/Prefabs/Explosion.prefab")]
+    [SerializeField] private GameObject prefabExplosion;
+
+    // Referencias legadas de LineRenderers (desactivadas para evitar líneas rígidas estáticas)
+    [SerializeField] private LineRenderer guiaLaserCarga;
+    [SerializeField] private LineRenderer hazKamehameha;
+    [SerializeField] private bool mostrarRayoLineRenderer = false;
+    [SerializeField] private bool mostrarGuiaLaserCarga = false;
+
+    // ========================================================================= //
+    // 7. EVENTO BSOD (Pantalla Azul de la Muerte)                               //
+    // ========================================================================= //
+
+    [Header("7. Pantalla Azul de la Muerte (BSOD)")]
+    [Tooltip("Porcentaje de vida (0 a 1) para activar el crash de pantalla azul al 15% de vida.")]
     [SerializeField] private float umbralVidaBSOD = 0.15f;
 
-    private bool bsodDisparado = false;
+    private bool bsodDisparadoPorVida = false;
 
     // ========================================================================= //
     // REFERENCIAS INTERNAS                                                      //
@@ -174,14 +271,24 @@ public class WindowsCommandAttacks : MonoBehaviour
     public bool EstaExhausto => estaExhausto;
     public bool EstaCargandoRayo => estaCargandoRayo;
     public bool EstaDisparandoRayo => estaDisparandoRayo;
+    public bool EstaEjecutandoMagicFire0 => estaEjecutandoMagicFire0;
+    public bool EstaEjecutandoMagicFire1 => estaEjecutandoMagicFire1;
     public bool FirewallActivo => firewallActivo;
-    public bool EstaEjecutandoAtaqueEspecial => estaCargandoRayo || estaDisparandoRayo || estaExhausto || estaEsquivando;
+    public bool EstaEjecutandoAtaqueEspecial => 
+        estaCargandoRayo || 
+        estaDisparandoRayo || 
+        estaExhausto || 
+        estaEsquivando || 
+        estaEjecutandoMagicFire0 || 
+        estaEjecutandoMagicFire1;
 
     private void Awake()
     {
         bossAI = GetComponent<WindowsBossAI>();
         animator = GetComponent<Animator>();
         if (animator == null) animator = GetComponentInChildren<Animator>();
+
+        if (intervaloMagicFire1 <= 0f && intervaloKamehameha > 0f) intervaloMagicFire1 = intervaloKamehameha;
 
         GarantizarComponentesVisuales();
     }
@@ -205,31 +312,53 @@ public class WindowsCommandAttacks : MonoBehaviour
             BuscarJugador();
         }
 
-        // 1. Verificación de BSOD al bajar del 15% de vida
+        // 1. Verificación pasiva de BSOD al descender del 15% de vida
         VerificarBSOD();
 
-        // 2. Si está ejecutando el ciclo de Kamehameha o esquivando, no iniciar nuevos comandos
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        // Atajos de prueba rápida en Play Mode: 1 = Magic Fire 0, 2 = Magic Fire 1, 3 = BSOD 5s
+        if (Input.GetKeyDown(KeyCode.Alpha1))
+        {
+            EjecutarAtaqueMagicFire0();
+        }
+        if (Input.GetKeyDown(KeyCode.Alpha2))
+        {
+            EjecutarAtaqueMagicFire1();
+        }
+        if (Input.GetKeyDown(KeyCode.Alpha3))
+        {
+            DispararBSOD();
+        }
+#endif
+
+        // 2. Si está ejecutando un ataque especial activo, no iniciar nuevas rutinas
         if (EstaEjecutandoAtaqueEspecial)
         {
-            if (estaDisparandoRayo)
-            {
-                ActualizarHazKamehameha();
-            }
             return;
         }
 
         int fase = bossAI.FaseActual;
 
-        // FASE 2 y FASE 3: Esquive con SaltaLoco, taskkill y netsh firewall
+        // ATAQUE 1: Magic Fire 0 (Disponible desde Fase 1 en adelante)
+        if (fase >= faseMinimaMagicFire0 && magicFire0Habilitado)
+        {
+            temporizadorMagicFire0 -= Time.deltaTime;
+            if (temporizadorMagicFire0 <= 0f)
+            {
+                temporizadorMagicFire0 = intervaloMagicFire0;
+                EjecutarAtaqueMagicFire0();
+                return;
+            }
+        }
+
+        // FASE 2 y FASE 3: Esquive SaltaLoco, taskkill y netsh firewall
         if (fase >= 2)
         {
-            // A. Detección y esquive reactivo de balas
             if (esquiveHabilitado && (Time.time - ultimoTiempoEsquive) >= cooldownEsquive)
             {
                 DetectarBalasYEsquivar();
             }
 
-            // B. Temporizador y ejecución de taskkill
             if (taskkillHabilitado)
             {
                 temporizadorTaskkill -= Time.deltaTime;
@@ -240,7 +369,6 @@ public class WindowsCommandAttacks : MonoBehaviour
                 }
             }
 
-            // C. Temporizador y ejecución de netsh firewall
             if (firewallHabilitado && !firewallActivo)
             {
                 temporizadorFirewall -= Time.deltaTime;
@@ -252,16 +380,277 @@ public class WindowsCommandAttacks : MonoBehaviour
             }
         }
 
-        // FASE 3: Rayo Kamehameha de PowerShell
-        if (fase >= 3 && kamehamehaHabilitado)
+        // ATAQUE 2: Magic Fire 1 (Homing persecución 3s + Explosión)
+        bool habilitadoF2 = (magicFire1Habilitado || kamehamehaHabilitado);
+        if (fase >= faseMinimaMagicFire1 && habilitadoF2)
         {
-            temporizadorKamehameha -= Time.deltaTime;
-            if (temporizadorKamehameha <= 0f)
+            temporizadorMagicFire1Internal -= Time.deltaTime;
+            if (temporizadorMagicFire1Internal <= 0f)
             {
-                temporizadorKamehameha = intervaloKamehameha;
-                IniciarKamehameha();
+                temporizadorMagicFire1Internal = intervaloMagicFire1;
+                EjecutarAtaqueMagicFire1();
             }
         }
+    }
+
+    private float temporizadorMagicFire1Internal = 6.0f;
+
+    // ========================================================================= //
+    // ATAQUE 1: MAGIC FIRE 0 + EXPLOSION + ROTATORPS2                           //
+    // ========================================================================= //
+
+    [ContextMenu("Ejecutar Ataque 1: Magic Fire 0")]
+    public void EjecutarAtaqueMagicFire0()
+    {
+        if (bossAI != null && bossAI.IsDead) return;
+        if (estaEjecutandoMagicFire0 || estaEjecutandoMagicFire1 || estaEsquivando) return;
+
+        StartCoroutine(RutinaMagicFire0());
+    }
+
+    private IEnumerator RutinaMagicFire0()
+    {
+        BuscarJugador();
+        if (playerTarget == null) yield break;
+
+        estaEjecutandoMagicFire0 = true;
+
+        // 1. REGLA FUNDAMENTAL: Capturar la posición actual de Linux al inicio exacto del ataque
+        Vector3 posicionCapturadaLinux = playerTarget.position;
+
+        EmitirComando("> C:\\Windows\\System32> powershell.exe -Command \"Invoke-OrbitalStrike -Target Linux\"");
+        EmitirComando($"> [MAGIC FIRE 0] Ataque aéreo descendiendo en ({posicionCapturadaLinux.x:0.1}, {posicionCapturadaLinux.z:0.1})... ¡ESQUIVA!");
+
+        // Animación de telegrafiado en Windows
+        if (animator != null && !string.IsNullOrEmpty(animacionCarga))
+        {
+            animator.CrossFadeInFixedTime(animacionCarga, 0.12f);
+        }
+
+        // Breve telegrafiado visual antes de soltar el proyectil (0.35s)
+        yield return new WaitForSeconds(0.35f);
+
+        if (bossAI != null && bossAI.IsDead)
+        {
+            estaEjecutandoMagicFire0 = false;
+            yield break;
+        }
+
+        // 2. Instanciar prefab Magic Fire 0 en la posición elevada sobre el punto registrado
+        GarantizarComponentesVisuales();
+        if (prefabMagicFire0 != null)
+        {
+            Vector3 posAparicion = posicionCapturadaLinux + Vector3.up * alturaInicialMagicFire0;
+            instanciaMagicFire0Activa = Instantiate(prefabMagicFire0, posAparicion, Quaternion.Euler(90f, 0f, 0f));
+            instanciaMagicFire0Activa.name = "Instancia_MagicFire0_Aereo";
+
+            MagicFire0AereoController aereoCtrl = instanciaMagicFire0Activa.GetComponent<MagicFire0AereoController>();
+            if (aereoCtrl == null) aereoCtrl = instanciaMagicFire0Activa.AddComponent<MagicFire0AereoController>();
+
+            bool ataqueTerminado = false;
+
+            aereoCtrl.Inicializar(
+                posicionCapturadaLinux,
+                playerTarget,
+                prefabExplosion,
+                prefabRotatorPS2,
+                alturaInicialMagicFire0,
+                velocidadCaidaMagicFire0,
+                radioImpactoMagicFire0,
+                danoMagicFire0,
+                duracionBSODMagicFire0,
+                duracionRotatorPS2,
+                escalaRotatorPS2,
+                escalaExplosion,
+                callbackFin: () => { ataqueTerminado = true; }
+            );
+
+            // Esperar mientras cae y procesa impacto
+            while (!ataqueTerminado && instanciaMagicFire0Activa != null)
+            {
+                if (bossAI != null && bossAI.IsDead)
+                {
+                    if (instanciaMagicFire0Activa != null) Destroy(instanciaMagicFire0Activa);
+                    break;
+                }
+                yield return null;
+            }
+        }
+
+        estaEjecutandoMagicFire0 = false;
+        instanciaMagicFire0Activa = null;
+    }
+
+    // ========================================================================= //
+    // ATAQUE 2: MAGIC FIRE 1 (Proyectil Homing 3s + Explosion + PoseCansado)    //
+    // ========================================================================= //
+
+    [ContextMenu("Ejecutar Ataque 2: Magic Fire 1")]
+    public void EjecutarAtaqueMagicFire1()
+    {
+        if (bossAI != null && bossAI.IsDead) return;
+        if (estaEjecutandoMagicFire1 || estaEjecutandoMagicFire0 || estaExhausto) return;
+
+        if (corrutinaMagicFire1 != null) StopCoroutine(corrutinaMagicFire1);
+        corrutinaMagicFire1 = StartCoroutine(RutinaMagicFire1());
+    }
+
+    /// <summary>
+    /// Reemplazo directo del anterior rayo Kamehameha estático.
+    /// Ejecuta el nuevo ataque visual con prefab Magic Fire 1 (homing) y Explosión.
+    /// </summary>
+    public void IniciarKamehameha()
+    {
+        EjecutarAtaqueMagicFire1();
+    }
+
+    private IEnumerator RutinaMagicFire1()
+    {
+        BuscarJugador();
+        if (playerTarget == null) yield break;
+
+        // --------------------------------------------------------------------- //
+        // FASE 1: TEGRAFIADO Y CARGA                                            //
+        // --------------------------------------------------------------------- //
+        estaCargandoRayo = true;
+        estaDisparandoRayo = false;
+        estaExhausto = false;
+        estaEjecutandoMagicFire1 = true;
+
+        EmitirComando("> powershell.exe -ExecutionPolicy Bypass -Command \"Invoke-MagicFireHomingStrike\"");
+        EmitirComando("> [MAGIC FIRE 1] Concentrando plasma dirigido... ¡PROYECTIL HOMING EN CAMINO!");
+
+        if (animator != null && !string.IsNullOrEmpty(animacionCarga))
+        {
+            animator.CrossFadeInFixedTime(animacionCarga, transicionCarga);
+        }
+
+        float transcurridoCarga = 0f;
+        while (transcurridoCarga < tiempoCarga)
+        {
+            if (bossAI != null && bossAI.IsDead)
+            {
+                LimpiarAtaquesActivos();
+                yield break;
+            }
+
+            transcurridoCarga += Time.deltaTime;
+
+            // Orientar gradualmente hacia Linux durante la carga
+            if (playerTarget != null)
+            {
+                Vector3 dir = playerTarget.position - transform.position;
+                dir.y = 0f;
+                if (dir.sqrMagnitude > 0.001f)
+                {
+                    Quaternion rot = Quaternion.LookRotation(dir);
+                    transform.rotation = Quaternion.Slerp(transform.rotation, rot, 4.0f * Time.deltaTime);
+                }
+            }
+
+            yield return null;
+        }
+
+        estaCargandoRayo = false;
+
+        // --------------------------------------------------------------------- //
+        // FASE 2: DISPARO Y PERSECUCIÓN HOMING DE MAGIC FIRE 1 (3 SEGUNDOS MÁX) //
+        // --------------------------------------------------------------------- //
+        estaDisparandoRayo = true;
+
+        if (animator != null && !string.IsNullOrEmpty(animacionDisparo))
+        {
+            animator.CrossFadeInFixedTime(animacionDisparo, transicionDisparo);
+        }
+
+        GarantizarComponentesVisuales();
+        Vector3 puntoOrigen = ObtenerPuntoDisparo();
+        Vector3 dirInicial = (playerTarget.position + Vector3.up * 0.8f - puntoOrigen).normalized;
+        if (dirInicial.sqrMagnitude < 0.001f) dirInicial = transform.forward;
+
+        bool proyectilFinalizado = false;
+
+        if (prefabMagicFire1 != null)
+        {
+            instanciaMagicFire1Activa = Instantiate(prefabMagicFire1, puntoOrigen, Quaternion.LookRotation(dirInicial));
+            instanciaMagicFire1Activa.name = "Instancia_MagicFire1_Homing";
+
+            MagicFire1HomingController homingCtrl = instanciaMagicFire1Activa.GetComponent<MagicFire1HomingController>();
+            if (homingCtrl == null) homingCtrl = instanciaMagicFire1Activa.AddComponent<MagicFire1HomingController>();
+
+            homingCtrl.Inicializar(
+                playerTarget,
+                transform,
+                prefabExplosion,
+                velocidadPersecucionMagicFire1,
+                velocidadGiroMagicFire1,
+                duracionHomingMagicFire1,
+                radioContactoMagicFire1,
+                radioExplosionMagicFire1,
+                danoMagicFire1,
+                escalaExplosion,
+                callbackFin: () => { proyectilFinalizado = true; }
+            );
+
+            // Esperar mientras persigue a Linux (máximo duracionHomingMagicFire1 segundos con margen de seguridad)
+            float maxEspera = duracionHomingMagicFire1 + 1.2f;
+            float tiempoEsperado = 0f;
+            while (!proyectilFinalizado && instanciaMagicFire1Activa != null && tiempoEsperado < maxEspera)
+            {
+                if (bossAI != null && bossAI.IsDead)
+                {
+                    LimpiarAtaquesActivos();
+                    yield break;
+                }
+                tiempoEsperado += Time.deltaTime;
+                yield return null;
+            }
+        }
+
+        estaDisparandoRayo = false;
+        estaEjecutandoMagicFire1 = false;
+        instanciaMagicFire1Activa = null;
+
+        // --------------------------------------------------------------------- //
+        // FASE 3: ESTADO EXHAUSTO / VULNERABLE (PoseCansado, 1.5x Daño Crítico) //
+        // --------------------------------------------------------------------- //
+        estaExhausto = true;
+        EmitirComando("> [CPU OVERHEAT 100%] Windows en 'PoseCansado'... ¡RECIBE 1.5x DAÑO CRÍTICO!");
+
+        if (animator != null && !string.IsNullOrEmpty(animacionExhausto))
+        {
+            animator.CrossFadeInFixedTime(animacionExhausto, transicionExhausto);
+        }
+
+        float transcurridoExhausto = 0f;
+        while (transcurridoExhausto < tiempoExhausto)
+        {
+            if (bossAI != null && bossAI.IsDead)
+            {
+                LimpiarAtaquesActivos();
+                yield break;
+            }
+            transcurridoExhausto += Time.deltaTime;
+            yield return null;
+        }
+
+        estaExhausto = false;
+        EmitirComando("> [SISTEMA REINICIADO] Windows Defender reanuda ciclo de combate.");
+
+        if (animator != null && !string.IsNullOrEmpty(animacionRecuperacion))
+        {
+            animator.CrossFadeInFixedTime(animacionRecuperacion, transicionRecuperacion);
+        }
+
+        corrutinaMagicFire1 = null;
+    }
+
+    private Vector3 ObtenerPuntoDisparo()
+    {
+        return transform.position 
+             + transform.forward * offsetDisparo.z 
+             + transform.up * offsetDisparo.y 
+             + transform.right * offsetDisparo.x;
     }
 
     // ========================================================================= //
@@ -286,7 +675,6 @@ public class WindowsCommandAttacks : MonoBehaviour
                 Vector3 dirHaciaBoss = (transform.position - bala.transform.position).normalized;
                 float dot = Vector3.Dot(bala.transform.forward, dirHaciaBoss);
 
-                // Si la bala apunta hacia Windows (> 0.45)
                 if (dot > 0.45f)
                 {
                     EjecutarEsquiveLateral(bala.transform.position);
@@ -299,10 +687,6 @@ public class WindowsCommandAttacks : MonoBehaviour
     private void EjecutarEsquiveLateral(Vector3 origenAmenaza)
     {
         ultimoTiempoEsquive = Time.time;
-        Vector3 vectorAmenaza = (transform.position - origenAmenaza).normalized;
-        vectorAmenaza.y = 0f;
-
-        // Decidir si esquivar a izquierda o derecha
         Vector3 lateral = transform.right;
         if (Random.value > 0.5f) lateral = -transform.right;
 
@@ -312,6 +696,12 @@ public class WindowsCommandAttacks : MonoBehaviour
     private IEnumerator RutinaEsquive(Vector3 direccionLateral)
     {
         estaEsquivando = true;
+
+        var navAgent = GetComponent<UnityEngine.AI.NavMeshAgent>();
+        if (navAgent != null && navAgent.isOnNavMesh)
+        {
+            navAgent.isStopped = true;
+        }
 
         if (animator != null)
         {
@@ -331,9 +721,15 @@ public class WindowsCommandAttacks : MonoBehaviour
         {
             transcurrido += Time.deltaTime;
             float t = transcurrido / duracion;
-            float curva = Mathf.Sin(t * Mathf.PI * 0.5f); // Ease-out suave
+            float curva = Mathf.Sin(t * Mathf.PI * 0.5f);
             transform.position = Vector3.Lerp(posInicial, posDestino, curva);
             yield return null;
+        }
+
+        if (navAgent != null && navAgent.isOnNavMesh)
+        {
+            navAgent.Warp(transform.position);
+            navAgent.isStopped = false;
         }
 
         estaEsquivando = false;
@@ -382,15 +778,10 @@ public class WindowsCommandAttacks : MonoBehaviour
         corrutinaFirewall = null;
     }
 
-    /// <summary>
-    /// Llamado por el escudo frontal cuando un proyectil intenta impactarlo.
-    /// Retorna true si el escudo desvió la bala.
-    /// </summary>
     public bool NotificarImpactoEnEscudo(Collider colBala, Vector3 puntoImpacto, Vector3 dirBala)
     {
         if (!firewallActivo) return false;
 
-        // Comprobar que el proyectil provenga del frente de Windows
         Vector3 forwardXZ = transform.forward;
         forwardXZ.y = 0f;
         forwardXZ.Normalize();
@@ -405,283 +796,34 @@ public class WindowsCommandAttacks : MonoBehaviour
     }
 
     // ========================================================================= //
-    // 4. GRAN KAMEHAMEHA DE POWERSHELL                                          //
-    // ========================================================================= //
-
-    public void IniciarKamehameha()
-    {
-        if (corrutinaKamehameha != null) StopCoroutine(corrutinaKamehameha);
-        corrutinaKamehameha = StartCoroutine(RutinaKamehameha());
-    }
-
-    private IEnumerator RutinaKamehameha()
-    {
-        // --------------------------------------------------------------------- //
-        // PASO 1: CARGA Y TELEGRAFIADO (1.8s)                                   //
-        // --------------------------------------------------------------------- //
-        estaCargandoRayo = true;
-        estaDisparandoRayo = false;
-        estaExhausto = false;
-
-        EmitirComando("> powershell.exe -ExecutionPolicy Bypass -Command \"Invoke-KamehamehaBeam\"");
-        EmitirComando("> [ADVERTENCIA] Condensando flujo de datos... ¡APÁRTATE DE LA LÍNEA DE VISTA!");
-
-        if (animator != null)
-        {
-            animator.CrossFadeInFixedTime("Se prepara para atacar", 0.15f);
-        }
-
-        AsegurarInstanciasEfectos();
-        Vector3 origenGuia = transform.position + transform.forward * 0.8f + Vector3.up * 1.2f;
-
-        if (instanciaEfectoCarga != null)
-        {
-            if (!instanciaEfectoCarga.activeSelf) instanciaEfectoCarga.SetActive(true);
-            instanciaEfectoCarga.transform.position = origenGuia;
-            instanciaEfectoCarga.transform.rotation = transform.rotation;
-        }
-
-        if (guiaLaserCarga != null)
-        {
-            guiaLaserCarga.enabled = true;
-        }
-
-        float transcurrido = 0f;
-        while (transcurrido < tiempoCarga)
-        {
-            if (bossAI != null && bossAI.IsDead) yield break;
-
-            transcurrido += Time.deltaTime;
-
-            // Orientar suavemente hacia el jugador mientras carga el rayo
-            if (playerTarget != null)
-            {
-                Vector3 dir = playerTarget.position - transform.position;
-                dir.y = 0f;
-                if (dir.sqrMagnitude > 0.001f)
-                {
-                    Quaternion rot = Quaternion.LookRotation(dir);
-                    transform.rotation = Quaternion.Slerp(transform.rotation, rot, 4.0f * Time.deltaTime);
-                }
-            }
-
-            origenGuia = transform.position + transform.forward * 0.8f + Vector3.up * 1.2f;
-
-            if (instanciaEfectoCarga != null)
-            {
-                instanciaEfectoCarga.transform.position = origenGuia;
-                instanciaEfectoCarga.transform.rotation = transform.rotation;
-            }
-
-            // Actualizar guía de puntería
-            if (guiaLaserCarga != null)
-            {
-                guiaLaserCarga.SetPosition(0, origenGuia);
-                guiaLaserCarga.SetPosition(1, origenGuia + transform.forward * alcanceRayo);
-            }
-
-            yield return null;
-        }
-
-        if (bossAI != null && bossAI.IsDead) yield break;
-
-        if (instanciaEfectoCarga != null && instanciaEfectoCarga.activeSelf)
-        {
-            instanciaEfectoCarga.SetActive(false);
-        }
-
-        if (guiaLaserCarga != null) guiaLaserCarga.enabled = false;
-        estaCargandoRayo = false;
-
-        // --------------------------------------------------------------------- //
-        // PASO 2: DISPARO CONTINUO DEL RAYO (2.5s)                              //
-        // --------------------------------------------------------------------- //
-        estaDisparandoRayo = true;
-        temporizadorPulsoRayo = 0f; // Primer pulso inmediato
-
-        EmitirComando("> [POWERSHELL RAYO DESATADO] Buffer Overflow frontal en ejecución!");
-
-        if (animator != null)
-        {
-            animator.CrossFadeInFixedTime("Grito", 0.1f);
-        }
-
-        if (hazKamehameha != null)
-        {
-            hazKamehameha.enabled = true;
-        }
-
-        if (instanciaEfectoRayo != null)
-        {
-            if (!instanciaEfectoRayo.activeSelf) instanciaEfectoRayo.SetActive(true);
-            Vector3 origenRayo = transform.position + transform.forward * 0.8f + Vector3.up * 1.2f;
-            instanciaEfectoRayo.transform.position = origenRayo;
-            instanciaEfectoRayo.transform.rotation = Quaternion.LookRotation(transform.forward);
-        }
-
-        float tiempoRayo = 0f;
-        while (tiempoRayo < duracionDisparo)
-        {
-            if (bossAI != null && bossAI.IsDead) yield break;
-
-            tiempoRayo += Time.deltaTime;
-            ActualizarHazKamehameha();
-            yield return null;
-        }
-
-        if (bossAI != null && bossAI.IsDead) yield break;
-
-        if (hazKamehameha != null) hazKamehameha.enabled = false;
-        if (instanciaEfectoRayo != null && instanciaEfectoRayo.activeSelf) instanciaEfectoRayo.SetActive(false);
-        if (instanciaImpactoRayo != null && instanciaImpactoRayo.activeSelf) instanciaImpactoRayo.SetActive(false);
-        estaDisparandoRayo = false;
-
-        // --------------------------------------------------------------------- //
-        // PASO 3: ESTADO EXHAUSTO / VULNERABLE (3.0s - PoseCansado, 1.5x Daño)  //
-        // --------------------------------------------------------------------- //
-        estaExhausto = true;
-
-        EmitirComando("> [CPU OVERHEAT 100%] Windows en 'PoseCansado'... ¡RECIBE 1.5x DAÑO CRÍTICO!");
-
-        if (animator != null)
-        {
-            animator.CrossFadeInFixedTime("PoseCansado", 0.15f);
-        }
-
-        float transcurridoExhausto = 0f;
-        while (transcurridoExhausto < tiempoExhausto)
-        {
-            if (bossAI != null && bossAI.IsDead) yield break;
-            transcurridoExhausto += Time.deltaTime;
-            yield return null;
-        }
-
-        if (bossAI != null && bossAI.IsDead) yield break;
-
-        estaExhausto = false;
-        EmitirComando("> [SISTEMA REINICIADO] Windows Defender reanuda ciclo de combate.");
-
-        if (animator != null)
-        {
-            animator.CrossFadeInFixedTime("Se prepara para atacar", 0.2f);
-        }
-
-        corrutinaKamehameha = null;
-    }
-
-    private void ActualizarHazKamehameha()
-    {
-        Vector3 origen = transform.position + transform.forward * 0.8f + Vector3.up * 1.2f;
-        Vector3 direccion = transform.forward;
-        Vector3 finRayo = origen + direccion * alcanceRayo;
-
-        if (instanciaEfectoRayo != null)
-        {
-            instanciaEfectoRayo.transform.position = origen;
-            instanciaEfectoRayo.transform.rotation = Quaternion.LookRotation(direccion);
-        }
-
-        temporizadorPulsoRayo -= Time.deltaTime;
-        bool aplicarDano = temporizadorPulsoRayo <= 0f;
-        if (aplicarDano)
-        {
-            temporizadorPulsoRayo = intervaloDanioRayo;
-        }
-
-        // Trazar Raycast para detectar punto de impacto en obstáculos o jugador
-        RaycastHit hitImpacto;
-        Vector3 puntoImpacto = finRayo;
-        bool huboImpacto = false;
-        if (Physics.Raycast(origen, direccion, out hitImpacto, alcanceRayo, ~0, QueryTriggerInteraction.Ignore))
-        {
-            if (!hitImpacto.collider.transform.IsChildOf(transform) && hitImpacto.collider.transform != transform)
-            {
-                puntoImpacto = hitImpacto.point;
-                huboImpacto = true;
-            }
-        }
-
-        if (hazKamehameha != null)
-        {
-            hazKamehameha.SetPosition(0, origen);
-            hazKamehameha.SetPosition(1, puntoImpacto);
-        }
-
-        if (instanciaImpactoRayo != null)
-        {
-            if (huboImpacto)
-            {
-                if (!instanciaImpactoRayo.activeSelf) instanciaImpactoRayo.SetActive(true);
-                instanciaImpactoRayo.transform.position = puntoImpacto;
-                instanciaImpactoRayo.transform.rotation = Quaternion.LookRotation(hitImpacto.normal);
-            }
-            else
-            {
-                if (instanciaImpactoRayo.activeSelf) instanciaImpactoRayo.SetActive(false);
-            }
-        }
-
-        // Trazar SphereCast continuo en la trayectoria del rayo para aplicar daño
-        float distanciaEfectiva = Vector3.Distance(origen, puntoImpacto);
-        RaycastHit[] hits = Physics.SphereCastAll(origen, radioRayo, direccion, distanciaEfectiva, ~0, QueryTriggerInteraction.Ignore);
-
-        if (hits != null && hits.Length > 0)
-        {
-            for (int i = 0; i < hits.Length; i++)
-            {
-                RaycastHit h = hits[i];
-                if (h.collider == null) continue;
-                if (h.collider.transform.IsChildOf(transform) || h.collider.transform == transform) continue;
-
-                // Dañar al jugador Tux en pulsos telegrafiados (1 daño por pulso)
-                if (aplicarDano)
-                {
-                    IDamageable danable = h.collider.GetComponentInParent<IDamageable>() ??
-                                          h.collider.GetComponentInChildren<IDamageable>();
-
-                    if (danable != null && !danable.IsDead)
-                    {
-                        danable.TakeDamage(danoPorPulso);
-                    }
-                }
-
-                // Empuje continuo sobre CharacterController
-                CharacterController cc = h.collider.GetComponentInParent<CharacterController>();
-                if (cc != null)
-                {
-                    cc.Move(direccion * 4.0f * Time.deltaTime);
-                }
-            }
-        }
-    }
-
-    // ========================================================================= //
-    // 5. EVENTO BSOD (Pantalla Azul de la Muerte)                               //
+    // 7. EVENTO BSOD (Pantalla Azul de la Muerte)                               //
     // ========================================================================= //
 
     private void VerificarBSOD()
     {
-        if (bsodDisparado || bossAI == null) return;
+        if (bsodDisparadoPorVida || bossAI == null) return;
 
         float ratioVida = bossAI.CurrentHealth / Mathf.Max(1f, bossAI.MaxHealth);
         if (ratioVida <= umbralVidaBSOD && ratioVida > 0f)
         {
-            bsodDisparado = true;
+            bsodDisparadoPorVida = true;
             DispararBSOD();
         }
     }
 
+    [ContextMenu("Disparar Pantalla Azul (5s)")]
     public void DispararBSOD()
     {
         EmitirComando("> [FATAL EXCEPTION: 0x000000EF] CRITICAL_PROCESS_DIED");
-        EmitirComando("> C:\\Windows\\System32> echo Inyectando BSOD en buffer de pantalla...");
+        EmitirComando("> C:\\Windows\\System32> echo Inyectando BSOD en buffer de pantalla (5.0s)...");
 
         if (animator != null)
         {
             animator.CrossFadeInFixedTime("Se rie", 0.1f);
         }
 
-        OnBSODTriggered?.Invoke();
+        SudoKill9.UI.BSODGlitchEffect.DispararBSOD(5.0f);
+        NotificarBSOD(5.0f);
     }
 
     // ========================================================================= //
@@ -708,7 +850,7 @@ public class WindowsCommandAttacks : MonoBehaviour
         }
     }
 
-    private void EmitirComando(string textoComando)
+    public static void EmitirComando(string textoComando)
     {
         OnCommandExecuted?.Invoke(textoComando);
 #if UNITY_EDITOR
@@ -721,161 +863,82 @@ public class WindowsCommandAttacks : MonoBehaviour
         LimpiarAtaquesActivos();
     }
 
-    private void LimpiarAtaquesActivos()
+    public void LimpiarAtaquesActivos()
     {
         StopAllCoroutines();
-        corrutinaKamehameha = null;
+        corrutinaMagicFire1 = null;
         corrutinaFirewall = null;
+
+        if (instanciaMagicFire0Activa != null)
+        {
+            Destroy(instanciaMagicFire0Activa);
+            instanciaMagicFire0Activa = null;
+        }
+
+        if (instanciaMagicFire1Activa != null)
+        {
+            Destroy(instanciaMagicFire1Activa);
+            instanciaMagicFire1Activa = null;
+        }
+
+        // Cancelar y destruir de inmediato cualquier tornado activo en la escena
+        RotatorPS2TornadoController[] tornados = Object.FindObjectsByType<RotatorPS2TornadoController>(FindObjectsSortMode.None);
+        for (int i = 0; i < tornados.Length; i++)
+        {
+            if (tornados[i] != null)
+            {
+                tornados[i].CancelarInmediatamente();
+            }
+        }
+
         if (guiaLaserCarga != null) guiaLaserCarga.enabled = false;
         if (hazKamehameha != null) hazKamehameha.enabled = false;
         if (escudoVisual != null) escudoVisual.SetActive(false);
-        if (instanciaEfectoCarga != null && instanciaEfectoCarga.activeSelf) instanciaEfectoCarga.SetActive(false);
-        if (instanciaEfectoRayo != null && instanciaEfectoRayo.activeSelf) instanciaEfectoRayo.SetActive(false);
-        if (instanciaImpactoRayo != null && instanciaImpactoRayo.activeSelf) instanciaImpactoRayo.SetActive(false);
+
         estaCargandoRayo = false;
         estaDisparandoRayo = false;
         estaExhausto = false;
         firewallActivo = false;
         estaEsquivando = false;
+        estaEjecutandoMagicFire0 = false;
+        estaEjecutandoMagicFire1 = false;
     }
 
     private void OnDestroy()
     {
-        if (instanciaImpactoRayo != null)
-        {
-            if (Application.isPlaying) Destroy(instanciaImpactoRayo);
-            else DestroyImmediate(instanciaImpactoRayo);
-        }
-    }
-
-    private void AsegurarInstanciasEfectos()
-    {
-        GarantizarComponentesVisuales();
-
-        if (instanciaEfectoCarga == null && prefabEfectoCarga != null)
-        {
-            instanciaEfectoCarga = Instantiate(prefabEfectoCarga, transform);
-            instanciaEfectoCarga.name = "InstanciaEfectoCarga_Hovl";
-            instanciaEfectoCarga.transform.localScale = Vector3.one * 0.75f;
-            instanciaEfectoCarga.SetActive(false);
-        }
-
-        if (instanciaEfectoRayo == null && prefabEfectoRayo != null)
-        {
-            instanciaEfectoRayo = Instantiate(prefabEfectoRayo, transform);
-            instanciaEfectoRayo.name = "InstanciaEfectoRayo_Hovl";
-            instanciaEfectoRayo.transform.localScale = new Vector3(1.3f, 1.3f, 2.5f);
-            instanciaEfectoRayo.SetActive(false);
-        }
-
-        if (instanciaImpactoRayo == null && prefabImpactoRayo != null)
-        {
-            instanciaImpactoRayo = Instantiate(prefabImpactoRayo);
-            instanciaImpactoRayo.name = "InstanciaImpactoRayo_Hovl";
-            instanciaImpactoRayo.transform.localScale = Vector3.one * 1.3f;
-            instanciaImpactoRayo.SetActive(false);
-        }
+        LimpiarAtaquesActivos();
     }
 
     /// <summary>
-    /// Garantiza la existencia de los LineRenderers y el escudo visual proceduralmente
-    /// si no fueron configurados previamente en el Inspector.
+    /// Garantiza la existencia de las referencias a los 4 prefabs de Hovl Studio
+    /// y deshabilita componentes de rayos antiguos obsoletos.
     /// </summary>
     public void GarantizarComponentesVisuales()
     {
 #if UNITY_EDITOR
-        // Descubrimiento y enlace automático de los prefabs de Hovl Studio
-        if (prefabEfectoCarga == null)
+        if (prefabMagicFire0 == null)
         {
-            prefabEfectoCarga = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Procedural fire/Prefabs/RotatorPS1.prefab");
-            if (prefabEfectoCarga == null)
-                prefabEfectoCarga = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Procedural fire/Prefabs/Magic fire pro blue.prefab");
+            prefabMagicFire0 = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Procedural fire/Prefabs/Magic fire 0.prefab");
         }
-        if (prefabEfectoRayo == null)
+        if (prefabMagicFire1 == null)
         {
-            prefabEfectoRayo = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Procedural fire/Prefabs/Magic fire pro blue.prefab");
+            prefabMagicFire1 = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Procedural fire/Prefabs/Magic fire 1.prefab");
         }
-        if (prefabImpactoRayo == null)
+        if (prefabRotatorPS2 == null)
         {
-            prefabImpactoRayo = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Procedural fire/Prefabs/Explosion.prefab");
+            prefabRotatorPS2 = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Procedural fire/Prefabs/RotatorPS2.prefab");
+        }
+        if (prefabExplosion == null)
+        {
+            prefabExplosion = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Procedural fire/Prefabs/Explosion.prefab");
         }
 #endif
 
-        // 1. Guía de Carga (Láser telegrafiado)
-        if (guiaLaserCarga == null)
-        {
-            Transform tGuia = transform.Find("GuiaLaserCarga");
-            if (tGuia == null)
-            {
-                GameObject goGuia = new GameObject("GuiaLaserCarga");
-                goGuia.transform.SetParent(transform, false);
-                guiaLaserCarga = goGuia.AddComponent<LineRenderer>();
-            }
-            else
-            {
-                guiaLaserCarga = tGuia.GetComponent<LineRenderer>();
-            }
+        // Sustitución de rayos antiguos: Desactivar LineRenderers antiguos rígidos
+        if (guiaLaserCarga != null) guiaLaserCarga.enabled = false;
+        if (hazKamehameha != null) hazKamehameha.enabled = false;
 
-            if (guiaLaserCarga != null)
-            {
-                guiaLaserCarga.positionCount = 2;
-                guiaLaserCarga.startWidth = 0.08f;
-                guiaLaserCarga.endWidth = 0.08f;
-                guiaLaserCarga.useWorldSpace = true;
-                guiaLaserCarga.enabled = false;
-
-                Shader unlit = Shader.Find("Universal Render Pipeline/Particles/Unlit") 
-                             ?? Shader.Find("Universal Render Pipeline/Unlit") 
-                             ?? Shader.Find("Sprites/Default");
-                if (unlit != null)
-                {
-                    Material mat = new Material(unlit);
-                    mat.SetFloat("_Surface", 1);
-                    mat.SetFloat("_Blend", 1);
-                    mat.color = new Color(0.1f, 0.9f, 1f, 0.85f);
-                    guiaLaserCarga.material = mat;
-                }
-            }
-        }
-
-        // 2. Haz Kamehameha (Rayo continuo potente)
-        if (hazKamehameha == null)
-        {
-            Transform tHaz = transform.Find("HazKamehameha");
-            if (tHaz == null)
-            {
-                GameObject goHaz = new GameObject("HazKamehameha");
-                goHaz.transform.SetParent(transform, false);
-                hazKamehameha = goHaz.AddComponent<LineRenderer>();
-            }
-            else
-            {
-                hazKamehameha = tHaz.GetComponent<LineRenderer>();
-            }
-
-            if (hazKamehameha != null)
-            {
-                hazKamehameha.positionCount = 2;
-                hazKamehameha.startWidth = 1.6f;
-                hazKamehameha.endWidth = 1.6f;
-                hazKamehameha.useWorldSpace = true;
-                hazKamehameha.enabled = false;
-
-                Shader unlit = Shader.Find("Universal Render Pipeline/Particles/Unlit") 
-                             ?? Shader.Find("Universal Render Pipeline/Unlit") 
-                             ?? Shader.Find("Sprites/Default");
-                if (unlit != null)
-                {
-                    Material mat = new Material(unlit);
-                    mat.SetFloat("_Surface", 1);
-                    mat.SetFloat("_Blend", 1);
-                    mat.color = new Color(0.15f, 0.95f, 1f, 0.95f); // Cian brillante eléctrico
-                    hazKamehameha.material = mat;
-                }
-            }
-        }
-
-        // 3. Escudo Frontal Holográfico de Firewall
+        // Escudo Frontal Holográfico de Firewall
         if (escudoVisual == null)
         {
             Transform tEscudo = transform.Find("FirewallShield_Holo");
@@ -892,7 +955,6 @@ public class WindowsCommandAttacks : MonoBehaviour
                 escudoVisual.transform.localRotation = Quaternion.Euler(0f, 0f, 0f);
                 escudoVisual.transform.localScale = new Vector3(2.5f, 2.0f, 1f);
 
-                // Configurar BoxCollider como trigger para evitar el error de MeshCollider no convexo en Unity
                 Collider col = escudoVisual.GetComponent<Collider>();
                 if (col != null)
                 {
