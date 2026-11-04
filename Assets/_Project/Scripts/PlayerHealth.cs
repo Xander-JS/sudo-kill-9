@@ -9,13 +9,13 @@ using UnityEngine;
 public class PlayerHealth : MonoBehaviour
 {
     [Header("Health Settings")]
-    [SerializeField] private int maxHealth = 5;
+    [SerializeField] private int maxHealth = 15;
     [SerializeField] private bool invincibleOnHit = true;
     [Tooltip("Invincibility window in seconds after taking a hit.")]
     [SerializeField] private float invincibilityDuration = 1f;
 
     public int MaxHealth => maxHealth;
-    public int CurrentHealth { get; private set; } = 5;
+    public int CurrentHealth { get; private set; }
     public bool IsDead => CurrentHealth <= 0;
 
     // payload: (currentHealth, maxHealth)
@@ -26,10 +26,9 @@ public class PlayerHealth : MonoBehaviour
 
     private void Awake()
     {
-        if (CurrentHealth <= 0)
-        {
-            CurrentHealth = maxHealth;
-        }
+        // Siempre vida completa al empezar: antes CurrentHealth arrancaba fijo en 5 y con maxHealth > 5
+        // Linux empezaba el nivel herido.
+        CurrentHealth = maxHealth;
     }
 
     /// <summary>Restaura la salud completa y cancela el temporizador de invencibilidad.</summary>
