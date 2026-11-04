@@ -17,7 +17,7 @@ using SudoKill9.UI.Inicio;
 /// Inicio, integrándose con la UI artística existente (sin paneles superpuestos ni
 /// selector de idioma en la pantalla principal):
 ///
-///  1. Abre la escena de Inicio y añade "Mapa_completo" a Build Settings.
+///  1. Abre la escena de Inicio y añade "Nivel_1" a Build Settings.
 ///  2. Elimina cualquier UI redundante creada por versiones anteriores (el panel
 ///     flotante "Selecciona idioma" y cualquier toggle de idioma del menú).
 ///  3. Construye/reutiliza un overlay de video "IntroVideo_Canvas" DESACTIVADO.
@@ -32,8 +32,8 @@ using SudoKill9.UI.Inicio;
 public static class SetupIntroVideoSystem
 {
     private const string InicioScenePath = "Assets/_Project/Scenes/GamePlay/Inicio.unity";
-    private const string TargetScenePath = "Assets/_Project/Scenes/Experimento_K/Scene_mapa/Mapa_completo.unity";
-    private const string TargetSceneName = "Mapa_completo";
+    private const string TargetScenePath = "Assets/_Project/Scenes/GamePlay/Nivel_1.unity";
+    private const string TargetSceneName = "Nivel_1";
 
     private const string IntroFolder = "Assets/_Project/Intro";
     private static readonly string[] EnglishClipNames = { "video_final_en", "video_en", "intro_en" };
