@@ -11,6 +11,12 @@ namespace SudoKill9.UI.Inicio
     /// </summary>
     public class TermsOfServiceCard : MonoBehaviour
     {
+        /// <summary>Clave de PlayerPrefs que marca que el jugador ya aceptó los términos (1 = aceptado).</summary>
+        public const string TermsAcceptedKey = "TermsAccepted";
+
+        /// <summary>True si los términos ya se aceptaron en esta u otra sesión.</summary>
+        public static bool HasAcceptedTerms => PlayerPrefs.GetInt(TermsAcceptedKey, 0) == 1;
+
         [Header("Referencias UI")]
         [Tooltip("CanvasGroup del overlay completo para animar el fade-out.")]
         [SerializeField] private CanvasGroup overlayCanvasGroup;
@@ -31,6 +37,13 @@ namespace SudoKill9.UI.Inicio
 
         private void Awake()
         {
+            // Ya aceptados (esta sesión o una anterior): no volver a mostrar al recargar Inicio.
+            if (HasAcceptedTerms)
+            {
+                gameObject.SetActive(false);
+                return;
+            }
+
             if (overlayCanvasGroup == null)
             {
                 overlayCanvasGroup = GetComponent<CanvasGroup>();
@@ -79,6 +92,10 @@ namespace SudoKill9.UI.Inicio
         {
             if (isClosing) return;
             isClosing = true;
+
+            // Persistir de inmediato, antes del fade, para que un cambio de escena no la pierda.
+            PlayerPrefs.SetInt(TermsAcceptedKey, 1);
+            PlayerPrefs.Save();
 
             if (gameObject.activeInHierarchy && overlayCanvasGroup != null)
             {
