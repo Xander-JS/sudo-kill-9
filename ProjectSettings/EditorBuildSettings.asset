@@ -6,20 +6,26 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/_Project/Scenes/Inicio.unity
+    path: Assets/_Project/Scenes/GamePlay/Inicio.unity
     guid: ac608f47e91555af9a262a14fbd7d8b5
   - enabled: 1
     path: Assets/_Project/Scenes/prueba.unity
     guid: 33d7827d6e0075342b331401db10a823
   - enabled: 1
-    path: Assets/_Project/Scenes/Credits.unity
+    path: Assets/_Project/Scenes/GamePlay/Credits.unity
     guid: 184e84838fe819f1ea4965c46154b9d7
   - enabled: 1
-    path: Assets/_Project/Scenes/Configuraciones.unity
+    path: Assets/_Project/Scenes/GamePlay/Configuraciones.unity
     guid: 6131311579db2a480a5133f773378402
   - enabled: 1
     path: Assets/_Project/Scenes/Experimento_K/Scene_mapa/Mapa_completo.unity
     guid: 9dd206f964918f235a090a43394298df
+  - enabled: 1
+    path: Assets/_Project/Scenes/GamePlay/Nivel_1.unity
+    guid: 613aa89d1409fb052a15ecac69d037e8
+  - enabled: 1
+    path: Assets/_Project/Scenes/GamePlay/Nivel_2.unity
+    guid: 59e87dc1098ea03ce9230f334ed1d2fe
   m_configObjects:
     com.unity.addressableassets: {fileID: 11400000, guid: 6c24e4ce34d0b0060b643727765f7bc5, type: 2}
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}
