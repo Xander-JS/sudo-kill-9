@@ -153,6 +153,12 @@ namespace SudoKill9.UI
         private void HandleBossDied()
         {
             if (pantallaMostrada) return;
+            // La cinemática final (monitor en el cielo -> créditos) sustituye al panel de victoria.
+            if (SudoKill9.Cinematics.FinalCinematicDirector.ControlaLaVictoria)
+            {
+                pantallaMostrada = true; // bloquea también el panel de derrota durante la cinemática
+                return;
+            }
             pantallaMostrada = true;
             StartCoroutine(RutinaMostrarVictoria());
         }
