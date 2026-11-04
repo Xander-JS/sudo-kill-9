@@ -25,7 +25,7 @@ namespace SudoKill9.EditorTools
     /// </summary>
     public static class SetupSurvivalLevels
     {
-        private const string SourceScene = "Assets/_Project/Scenes/Experimento_K/Scene_mapa/Mapa_completo.unity";
+        private const string SourceScene = "Assets/_Project/Scenes/GamePlay/Mapa_completo.unity";
         private const string ScenesDir = "Assets/_Project/Scenes/GamePlay";
         private const string EnemiesDir = "Assets/_Project/Prefabs/Characters/Enemies";
         private const string FontPath = "Assets/_Project/Fonts/PixelTactical_Point.asset";
@@ -286,7 +286,7 @@ namespace SudoKill9.EditorTools
             so.FindProperty("finalStretchSeconds").floatValue = 30f;
             so.FindProperty("victoryCondition").enumValueIndex = (int)VictoryCondition.SurviveTimerThenClear;
             so.FindProperty("completedMessageKey").stringValue = GameplayKeys.LevelCompleted;
-            so.FindProperty("nextSceneName").stringValue = "Nivel_3";
+            so.FindProperty("nextSceneName").stringValue = "Mapa_completo";
             so.FindProperty("fallbackSceneName").stringValue = "Inicio";
 
             SetPool(so.FindProperty("enemyPool"),
