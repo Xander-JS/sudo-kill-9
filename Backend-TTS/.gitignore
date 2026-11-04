@@ -1,0 +1,20 @@
+# Python virtual environment
+venv/
+env/
+ENV/
+.venv/
+
+# Environment variables
+.env
+
+# Python cache & bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Audio temporary files / cache
+*.mp3
+*.wav
+*.ogg
