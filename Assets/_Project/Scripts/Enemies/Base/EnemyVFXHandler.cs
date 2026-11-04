@@ -18,6 +18,7 @@ namespace SudoKill9.Enemies
     ///     y el enemigo se encoge justo antes del Destroy que programa EnemyStatsBase (despawnDelay).
     ///   - Movimiento: polvo o propulsión que solo emite mientras NavMeshAgent.velocity supera moveSpeedThreshold.
     ///   - Impacto: EnemyAIBase.OnAttackConnected → ráfaga corta (6–9 chispas, ≤ 0.2 s) en el punto de contacto.
+    ///   - Daño recibido: EnemyStatsBase.OnTakeDamage (balas de Linux) → la misma ráfaga en el centro del cuerpo.
     /// Los slots de prefab son opcionales: vacíos = sistemas procedurales construidos en Awake (sin assets).
     /// </summary>
     [DisallowMultipleComponent]
@@ -98,13 +99,13 @@ namespace SudoKill9.Enemies
 
         private void OnEnable()
         {
-            if (stats != null) stats.OnDeath += HandleDeath;
+            if (stats != null) { stats.OnDeath += HandleDeath; stats.OnTakeDamage += HandleDamaged; }
             if (ai != null) ai.OnAttackConnected += HandleAttackConnected;
         }
 
         private void OnDisable()
         {
-            if (stats != null) stats.OnDeath -= HandleDeath;
+            if (stats != null) { stats.OnDeath -= HandleDeath; stats.OnTakeDamage -= HandleDamaged; }
             if (ai != null) ai.OnAttackConnected -= HandleAttackConnected;
         }
 
@@ -123,6 +124,11 @@ namespace SudoKill9.Enemies
             SpawnOneShot(deathTemplate, BodyCenter(), Quaternion.identity);
 
             if (shrinkBeforeDespawn && stats.DespawnDelay >= 0f) StartCoroutine(ShrinkBeforeDespawn(stats.DespawnDelay));
+        }
+
+        private void HandleDamaged(float amount)
+        {
+            if (!stats.IsDead) SpawnOneShot(hitTemplate, BodyCenter(), Quaternion.identity); // la muerte ya tiene su VFX
         }
 
         private void HandleAttackConnected(Vector3 point, Vector3 normal)
