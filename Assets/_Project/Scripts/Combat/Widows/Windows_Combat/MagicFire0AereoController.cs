@@ -34,8 +34,11 @@ namespace SudoKill9.Combat
         [SerializeField] private Vector3 escalaExplosion = new Vector3(1.5f, 1.5f, 1.5f);
 
         [Header("Efectos Secundarios en Acierto")]
-        [Tooltip("Duración activa del tornado RotatorPS2 alrededor de Linux.")]
-        [SerializeField] private float duracionRotatorPS2 = 5.0f;
+        [Tooltip("Duración activa de la trampa estática RotatorPS1 en el suelo.")]
+        [SerializeField] private float duracionRotatorPS1 = 2.5f;
+
+        [Tooltip("Duración activa del tornado RotatorPS2 alrededor de Linux (compatibilidad).")]
+        [SerializeField] private float duracionRotatorPS2 = 2.5f;
 
         [Tooltip("Escala inicial del tornado RotatorPS2.")]
         [SerializeField] private Vector3 escalaRotatorPS2 = new Vector3(1.2f, 1.2f, 1.2f);
@@ -55,6 +58,7 @@ namespace SudoKill9.Combat
         public float VelocidadCaida => velocidadCaida;
         public float RadioImpacto => radioImpacto;
         public float Dano => dano;
+        public float DuracionRotatorPS1 => duracionRotatorPS1;
 
         /// <summary>
         /// Configura el ataque con la posición congelada de Linux en el momento del lanzamiento.
@@ -68,7 +72,7 @@ namespace SudoKill9.Combat
             float velocidad = 16f,
             float radio = 3.2f,
             float danoAtaque = 1f,
-            float duracionTornado = 5f,
+            float duracionTornado = 2.5f,
             Vector3? escalaTornado = null,
             Vector3? escalaExp = null,
             Action callbackFin = null)
@@ -84,7 +88,8 @@ namespace SudoKill9.Combat
             velocidadCaida = Mathf.Max(2f, velocidad);
             radioImpacto = Mathf.Max(0.5f, radio);
             dano = danoAtaque;
-            duracionRotatorPS2 = Mathf.Max(1f, duracionTornado);
+            duracionRotatorPS1 = Mathf.Max(0.5f, duracionTornado);
+            duracionRotatorPS2 = duracionRotatorPS1;
 
             if (escalaTornado.HasValue) escalaRotatorPS2 = escalaTornado.Value;
             if (escalaExp.HasValue) escalaExplosion = escalaExp.Value;
@@ -153,30 +158,16 @@ namespace SudoKill9.Combat
                     }
                 }
 
-                // 3. Instanciar RotatorPS2 centrado en Linux (limpiando tornados previos para evitar superposición)
-                if (prefabRotatorPS2 != null && targetLinux != null)
-                {
-                    RotatorPS2TornadoController[] tornadosPrevios = UnityEngine.Object.FindObjectsByType<RotatorPS2TornadoController>(FindObjectsSortMode.None);
-                    for (int i = 0; i < tornadosPrevios.Length; i++)
-                    {
-                        if (tornadosPrevios[i] != null)
-                        {
-                            tornadosPrevios[i].CancelarInmediatamente();
-                        }
-                    }
-
-                    GameObject goRotator = Instantiate(prefabRotatorPS2, targetLinux.position, Quaternion.identity);
-                    RotatorPS2TornadoController rotCtrl = goRotator.GetComponent<RotatorPS2TornadoController>();
-                    if (rotCtrl == null) rotCtrl = goRotator.AddComponent<RotatorPS2TornadoController>();
-                    rotCtrl.Inicializar(targetLinux, duracionRotatorPS2, escalaRotatorPS2);
-                }
+                // 3. Instanciar RotatorPS1 FIJO en el lugar de impacto como trampa de área con confinamiento
+                InstanciarRotatorEstatico(linuxEnArea);
             }
             else
             {
                 // ============================================================= //
                 // MISS: Linux esquivó con éxito                                 //
                 // ============================================================= //
-                // El ataque falla sin daño, sin Explosion, sin BSOD y sin RotatorPS2
+                // Esquive exitoso: no recibe daño. El efecto visual permanece en el suelo sin atrapar
+                InstanciarRotatorEstatico(false);
             }
 
             FinalizarYDestruir();
@@ -213,6 +204,49 @@ namespace SudoKill9.Combat
             }
 
             return false;
+        }
+
+        private void InstanciarRotatorEstatico(bool atraparJugador)
+        {
+            if (prefabRotatorPS2 == null) return;
+
+            // 1. Limpiar trampas o tornados previos para no apilar efectos
+            RotatorPS1TrapController[] trampasPrevias = UnityEngine.Object.FindObjectsByType<RotatorPS1TrapController>(FindObjectsSortMode.None);
+            for (int i = 0; i < trampasPrevias.Length; i++)
+            {
+                if (trampasPrevias[i] != null) trampasPrevias[i].LiberarYDestruirInmediato();
+            }
+            RotatorPS2TornadoController[] tornadosPrevios = UnityEngine.Object.FindObjectsByType<RotatorPS2TornadoController>(FindObjectsSortMode.None);
+            for (int i = 0; i < tornadosPrevios.Length; i++)
+            {
+                if (tornadosPrevios[i] != null) tornadosPrevios[i].CancelarInmediatamente();
+            }
+
+            // 2. Determinar posición fija de suelo exacta
+            Vector3 puntoSuelo = posicionObjetivoRegistrada;
+            if (Physics.Raycast(posicionObjetivoRegistrada + Vector3.up * 2f, Vector3.down, out RaycastHit hitSuelo, 6f, ~0, QueryTriggerInteraction.Ignore))
+            {
+                puntoSuelo = hitSuelo.point;
+            }
+
+            // 3. Instanciar Rotator en punto de impacto fijo (NO sigue a Linux)
+            GameObject goRotator = Instantiate(prefabRotatorPS2, puntoSuelo, Quaternion.identity);
+
+            // Desactivar o remover componente antiguo de seguimiento si venía en el prefab
+            RotatorPS2TornadoController antiguoTornado = goRotator.GetComponent<RotatorPS2TornadoController>();
+            if (antiguoTornado != null) Destroy(antiguoTornado);
+
+            RotatorPS1TrapController trapCtrl = goRotator.GetComponent<RotatorPS1TrapController>();
+            if (trapCtrl == null) trapCtrl = goRotator.AddComponent<RotatorPS1TrapController>();
+
+            trapCtrl.Inicializar(
+                puntoImpactoSuelo: puntoSuelo,
+                duracion: duracionRotatorPS1,
+                radio: radioImpacto,
+                transformLinux: targetLinux,
+                atraparJugador: atraparJugador,
+                escalaBase: escalaRotatorPS2
+            );
         }
 
         private void FinalizarYDestruir()
