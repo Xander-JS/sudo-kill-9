@@ -1,4 +1,5 @@
 using System.Collections;
+using SudoKill9.Settings;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -22,13 +23,23 @@ namespace SudoKill9.UI.Credits
         [SerializeField] private float scrollDuration = 15f;
         [SerializeField] private float fadeDuration = 0.6f;
 
+        [Header("Música")]
+        [Tooltip("Pista de fondo de los créditos (distinta de la del menú). Arrastra aquí el AudioClip.")]
+        [SerializeField] private AudioClip creditsMusic;
+        [Tooltip("Opcional: si se deja vacío se crea uno en este objeto al iniciar.")]
+        [SerializeField] private AudioSource musicSource;
+        [Tooltip("Volumen de mezcla base; se multiplica por el slider Música de Configuraciones.")]
+        [SerializeField, Range(0f, 1f)] private float musicVolume = 0.65f;
+
         private bool leaving;
         private Coroutine fadeRoutine;
+        private AudioVolumeChannel musicChannel;
 
         private IEnumerator Start()
         {
             fader.alpha = 1f;
             fadeRoutine = StartCoroutine(FadeTo(0f));
+            PlayMusic();
 
             float startY = -((RectTransform)content.parent).rect.height * 0.5f; // borde superior justo bajo la pantalla
             content.anchoredPosition = new Vector2(0f, startY);
@@ -64,10 +75,50 @@ namespace SudoKill9.UI.Credits
             if (fadeRoutine != null) StopCoroutine(fadeRoutine);
             DontDestroyOnLoad(gameObject);
 
+            // La música se apaga junto con el fundido a negro: no debe colarse en Inicio
+            // (este objeto sobrevive a la carga por DontDestroyOnLoad).
+            StartCoroutine(FadeOutMusic());
             yield return FadeTo(1f);
+            if (musicSource != null) musicSource.Stop();
             yield return SceneManager.LoadSceneAsync(menuScene);
             yield return FadeTo(0f);
             Destroy(gameObject);
+        }
+
+        private void PlayMusic()
+        {
+            if (creditsMusic == null) return; // slot aún vacío: créditos sin música
+
+            if (musicSource == null)
+            {
+                musicSource = gameObject.AddComponent<AudioSource>();
+                musicSource.spatialBlend = 0f;
+                musicSource.volume = musicVolume; // antes de añadir el canal: AudioVolumeChannel lo toma como base
+            }
+
+            musicSource.clip = creditsMusic;
+            musicSource.loop = true;
+            musicSource.playOnAwake = false;
+
+            // Respeta el slider "Música" de Configuraciones.
+            musicChannel = musicSource.GetComponent<AudioVolumeChannel>();
+            if (musicChannel == null) musicChannel = musicSource.gameObject.AddComponent<AudioVolumeChannel>();
+            musicChannel.Channel = AudioChannel.Music;
+
+            musicSource.Play();
+        }
+
+        private IEnumerator FadeOutMusic()
+        {
+            if (musicSource == null || !musicSource.isPlaying) yield break;
+            if (musicChannel != null) musicChannel.enabled = false; // que el canal no pise el fundido
+
+            float from = musicSource.volume;
+            for (float t = 0f; t < 1f && musicSource != null; t += Time.unscaledDeltaTime / fadeDuration)
+            {
+                musicSource.volume = Mathf.Lerp(from, 0f, t);
+                yield return null;
+            }
         }
 
         private IEnumerator FadeTo(float target)
