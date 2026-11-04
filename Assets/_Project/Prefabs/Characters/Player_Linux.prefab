@@ -1265,6 +1265,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2659742051941110012}
+  - component: {fileID: 4872807008532335420}
   m_Layer: 0
   m_Name: Player_Linux
   m_TagString: Untagged
@@ -1288,6 +1289,21 @@ Transform:
   - {fileID: 1366730975766539270}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4872807008532335420
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7172952320392726502}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fd0b7d7b44e3961c299a1581c6ad7ad8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LinuxStarfield
+  targetCamera: {fileID: 0}
+  starCount: 400
+  starSize: 0.003
 --- !u!1 &7415973972655140230
 GameObject:
   m_ObjectHideFlags: 0
