@@ -1,0 +1,75 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9620f8c34305754d8cc9a7e49e852d9, type: 3}
+  m_Name: Settings_es
+  m_EditorClassIdentifier: Unity.Localization::UnityEngine.Localization.Tables.StringTable
+  m_LocaleId:
+    m_Code: es
+  m_SharedData: {fileID: 11400000, guid: fe66cfe8e5e1e548bbf2e4a1844a36f0, type: 2}
+  m_Metadata:
+    m_Items: []
+  m_TableData:
+  - m_Id: 1135964160
+    m_Localized: "CONFIGURACI\xD3N"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1152741376
+    m_Localized: "// par\xE1metros del sistema"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1156935680
+    m_Localized: IDIOMA
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1156935681
+    m_Localized: Idioma
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1156935682
+    m_Localized: AUDIO
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1156935683
+    m_Localized: Volumen general
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1156935684
+    m_Localized: "M\xFAsica"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1156935685
+    m_Localized: Efectos y voces
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1156935686
+    m_Localized: PANTALLA
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1156935687
+    m_Localized: Pantalla completa
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1156935688
+    m_Localized: "Resoluci\xF3n"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1156935689
+    m_Localized: '[ < VOLVER ]'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1156935690
+    m_Localized: "[ESC] Volver al men\xFA"
+    m_Metadata:
+      m_Items: []
+  references:
+    version: 2
+    RefIds: []

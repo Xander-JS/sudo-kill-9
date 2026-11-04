@@ -1,0 +1,136 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b11a58205ec3474ca216360e9fa74a8, type: 3}
+  m_Name: Credits Shared Data
+  m_EditorClassIdentifier: Unity.Localization::UnityEngine.Localization.Tables.SharedTableData
+  m_TableCollectionName: Credits
+  m_TableCollectionNameGuidString: 9a973e115d102cbc380899e3be3b8842
+  m_Entries:
+  - m_Id: 762671104
+    m_Key: credits_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 783642624
+    m_Key: credits_developed_by
+    m_Metadata:
+      m_Items: []
+  - m_Id: 783642625
+    m_Key: credits_dev_marlon
+    m_Metadata:
+      m_Items: []
+  - m_Id: 783642626
+    m_Key: credits_dev_kevin
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836928
+    m_Key: credits_dev_juan
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836929
+    m_Key: credits_team_header
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836930
+    m_Key: credits_role_direction
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836931
+    m_Key: credits_role_programming
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836932
+    m_Key: credits_role_modeling
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836933
+    m_Key: credits_role_narrative
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836934
+    m_Key: credits_role_sound
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836935
+    m_Key: credits_team_note
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836936
+    m_Key: credits_tools_header
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836937
+    m_Key: credits_tool_engine_label
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836938
+    m_Key: credits_tool_engine
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836939
+    m_Key: credits_tool_audio_label
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836940
+    m_Key: credits_tool_audio
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836941
+    m_Key: credits_tool_mesh_label
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836942
+    m_Key: credits_tool_mesh
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836943
+    m_Key: credits_tool_optimization_label
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836944
+    m_Key: credits_tool_optimization
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836945
+    m_Key: credits_tool_rigging_label
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836946
+    m_Key: credits_tool_rigging
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836947
+    m_Key: credits_thanks_header
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836948
+    m_Key: credits_thanks_body
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836949
+    m_Key: credits_end_thanks
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836950
+    m_Key: credits_exit_prompt
+    m_Metadata:
+      m_Items: []
+  m_Metadata:
+    m_Items: []
+  m_KeyGenerator:
+    rid: 7558213442065138326
+  references:
+    version: 2
+    RefIds:
+    - rid: 7558213442065138326
+      type: {class: DistributedUIDGenerator, ns: UnityEngine.Localization.Tables, asm: Unity.Localization}
+      data:
+        m_CustomEpoch: 1793762009893

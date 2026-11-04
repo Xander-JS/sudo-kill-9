@@ -1,0 +1,139 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9620f8c34305754d8cc9a7e49e852d9, type: 3}
+  m_Name: Credits_en
+  m_EditorClassIdentifier: Unity.Localization::UnityEngine.Localization.Tables.StringTable
+  m_LocaleId:
+    m_Code: en
+  m_SharedData: {fileID: 11400000, guid: 9a973e115d102cbc380899e3be3b8842, type: 2}
+  m_Metadata:
+    m_Items: []
+  m_TableData:
+  - m_Id: 762671104
+    m_Localized: SUDO-KILL-9
+    m_Metadata:
+      m_Items: []
+  - m_Id: 783642624
+    m_Localized: DEVELOPED BY
+    m_Metadata:
+      m_Items: []
+  - m_Id: 783642625
+    m_Localized: Marlon Alexander Imbajoa
+    m_Metadata:
+      m_Items: []
+  - m_Id: 783642626
+    m_Localized: Kevin Stiven Buesaquillo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836928
+    m_Localized: Juan Felipe Zambrano
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836929
+    m_Localized: COMPREHENSIVE DEVELOPMENT TEAM
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836930
+    m_Localized: Project Direction & Game Design
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836931
+    m_Localized: Programming & Game Logic
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836932
+    m_Localized: 3D Modeling & Concept Art
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836933
+    m_Localized: Narrative Design & Dialogues
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836934
+    m_Localized: Sound Design & Animation
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836935
+    m_Localized: '(All team members participated across
+
+      each of the production
+      phases)'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836936
+    m_Localized: TECHNOLOGIES & TOOLS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836937
+    m_Localized: Game Engine
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836938
+    m_Localized: Unity
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836939
+    m_Localized: Design and Audio
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836940
+    m_Localized: FMOD
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836941
+    m_Localized: 3D Mesh Generation
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836942
+    m_Localized: Tripo 3D
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836943
+    m_Localized: Optimization and Technical Adjustments
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836944
+    m_Localized: Blender
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836945
+    m_Localized: Rigging and Animations
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836946
+    m_Localized: Adobe Mixamo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836947
+    m_Localized: ACKNOWLEDGMENTS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836948
+    m_Localized: 'To the Open Source community
+
+      and free and open-source technologies
+
+      that
+      inspired the universe of this game.'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836949
+    m_Localized: THANK YOU FOR PLAYING!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 787836950
+    m_Localized: Press [SPACE] or [ESC] to exit
+    m_Metadata:
+      m_Items: []
+  references:
+    version: 2
+    RefIds: []
