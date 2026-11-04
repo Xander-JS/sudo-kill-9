@@ -1,0 +1,15 @@
+/home/kevin/Universidad/interfaces/juego/sudo-kill-9/Tools/VerificationRunner/obj/Debug/net8.0/VerificationRunner.GeneratedMSBuildEditorConfig.editorconfig
+/home/kevin/Universidad/interfaces/juego/sudo-kill-9/Tools/VerificationRunner/obj/Debug/net8.0/VerificationRunner.AssemblyInfoInputs.cache
+/home/kevin/Universidad/interfaces/juego/sudo-kill-9/Tools/VerificationRunner/obj/Debug/net8.0/VerificationRunner.AssemblyInfo.cs
+/home/kevin/Universidad/interfaces/juego/sudo-kill-9/Tools/VerificationRunner/obj/Debug/net8.0/VerificationRunner.csproj.CoreCompileInputs.cache
+/home/kevin/Universidad/interfaces/juego/sudo-kill-9/Tools/VerificationRunner/obj/Debug/net8.0/VerificationRunner.sourcelink.json
+/home/kevin/Universidad/interfaces/juego/sudo-kill-9/Tools/VerificationRunner/bin/Debug/net8.0/VerificationRunner
+/home/kevin/Universidad/interfaces/juego/sudo-kill-9/Tools/VerificationRunner/bin/Debug/net8.0/VerificationRunner.deps.json
+/home/kevin/Universidad/interfaces/juego/sudo-kill-9/Tools/VerificationRunner/bin/Debug/net8.0/VerificationRunner.runtimeconfig.json
+/home/kevin/Universidad/interfaces/juego/sudo-kill-9/Tools/VerificationRunner/bin/Debug/net8.0/VerificationRunner.dll
+/home/kevin/Universidad/interfaces/juego/sudo-kill-9/Tools/VerificationRunner/bin/Debug/net8.0/VerificationRunner.pdb
+/home/kevin/Universidad/interfaces/juego/sudo-kill-9/Tools/VerificationRunner/obj/Debug/net8.0/VerificationRunner.dll
+/home/kevin/Universidad/interfaces/juego/sudo-kill-9/Tools/VerificationRunner/obj/Debug/net8.0/refint/VerificationRunner.dll
+/home/kevin/Universidad/interfaces/juego/sudo-kill-9/Tools/VerificationRunner/obj/Debug/net8.0/VerificationRunner.pdb
+/home/kevin/Universidad/interfaces/juego/sudo-kill-9/Tools/VerificationRunner/obj/Debug/net8.0/VerificationRunner.genruntimeconfig.cache
+/home/kevin/Universidad/interfaces/juego/sudo-kill-9/Tools/VerificationRunner/obj/Debug/net8.0/ref/VerificationRunner.dll
