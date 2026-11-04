@@ -4,6 +4,7 @@ using UnityEditor.Animations;
 using UnityEditor.SceneManagement;
 using UnityEngine.AI;
 using Unity.AI.Navigation;
+using System.Collections.Generic;
 using SudoKill9.Enemies.Virus;
 
 namespace SudoKill9.EditorTools
@@ -18,31 +19,159 @@ namespace SudoKill9.EditorTools
     public static class SetupVirusEnemy
     {
         private const string ControllerPath = "Assets/_Project/Animations/Controllers/Enemies/VirusController.controller";
-        private const string ClipsDir = "Assets/_Project/Animations/Clips/Villanos_Animaciones";
-        private const string SfxDir = "Assets/_Project/Audio/SFX/Sound_Enemies/Virus";
+        private const string ClipsDir = "Assets/_Project/Animations/Clips/Enemies_Animaciones";
+        private const string SfxDir = "Assets/_Project/Audio/SFX/Enemies_Sound/Virus";
+        private const string OptModelPath = "Assets/_Project/Models/Characters/virus-skeleton/virus_opt.fbx";
+        private const string HeavyModelPath = "Assets/_Project/Models/Characters/virus-skeleton/virus.fbx";
+        private const string OptName = "virus_opt";
+        private const string LegacyName = "virus";
+
+        // ---------------------------------------------------------------- Modelo optimizado
+
+        /// <summary>El Virus de la escena (virus_opt o, si aún no se ha migrado, el pesado). Lo usan los demás Setup para colocarse a su lado.</summary>
+        public static GameObject FindVirusInScene()
+        {
+            GameObject go = GameObject.Find(OptName);
+            if (go == null) go = GameObject.Find(LegacyName);
+            if (go == null)
+            {
+                var ai = Object.FindFirstObjectByType<VirusAIController>();
+                if (ai != null) go = ai.gameObject;
+            }
+            return go;
+        }
+
+        /// <summary>
+        /// Sustituye cada Virus que no sea virus_opt.fbx (instancias de virus.fbx o cualquier objeto con VirusStats/VirusAIController)
+        /// por una instancia de virus_opt en el mismo sitio, y devuelve todas las instancias optimizadas de la escena.
+        /// Si no hay ningún Virus, instancia uno en el origen.
+        /// </summary>
+        private static List<GameObject> FindOrCreateOptimizedViruses()
+        {
+            var result = new List<GameObject>();
+            GameObject optModel = AssetDatabase.LoadAssetAtPath<GameObject>(OptModelPath);
+            if (optModel == null)
+            {
+                Debug.LogError($"[SetupVirusEnemy] No se encontró el modelo optimizado en {OptModelPath}.");
+                return result;
+            }
+
+            foreach (GameObject go in FindAllVirusRoots())
+            {
+                result.Add(IsInstanceOf(go, OptModelPath) ? go : ReplaceWithOptimized(go, optModel));
+            }
+
+            if (result.Count == 0)
+            {
+                GameObject optGO = (GameObject)PrefabUtility.InstantiatePrefab(optModel, EditorSceneManager.GetActiveScene());
+                optGO.name = OptName;
+                Undo.RegisterCreatedObjectUndo(optGO, "Create virus_opt");
+                Debug.Log($"<color=green>[SetupVirusEnemy]</color> No había Virus en la escena: '{OptName}' instanciado en el origen.");
+                result.Add(optGO);
+            }
+            return result;
+        }
+
+        /// <summary>Raíces de Virus en la escena activa: instancias de virus.fbx / virus_opt.fbx y objetos con componentes de Virus.</summary>
+        private static List<GameObject> FindAllVirusRoots()
+        {
+            var roots = new List<GameObject>();
+            void Add(GameObject go)
+            {
+                if (go != null && go.scene == EditorSceneManager.GetActiveScene() && !roots.Contains(go)) roots.Add(go);
+            }
+
+            foreach (Transform t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (IsInstanceOf(t.gameObject, HeavyModelPath) || IsInstanceOf(t.gameObject, OptModelPath)) Add(t.gameObject);
+            }
+            foreach (VirusStats s in Object.FindObjectsByType<VirusStats>(FindObjectsInactive.Include, FindObjectsSortMode.None)) Add(s.gameObject);
+            foreach (VirusAIController ai in Object.FindObjectsByType<VirusAIController>(FindObjectsInactive.Include, FindObjectsSortMode.None)) Add(ai.gameObject);
+            return roots;
+        }
+
+        /// <summary>
+        /// Instancia virus_opt en lugar de 'old' (mismo padre, orden, posición, rotación y escala), le traspasa los valores
+        /// de VirusStats, VirusAudio, VirusAIController, NavMeshAgent y CapsuleCollider y borra 'old' (con Undo).
+        /// </summary>
+        private static GameObject ReplaceWithOptimized(GameObject old, GameObject optModel)
+        {
+            GameObject optGO = (GameObject)PrefabUtility.InstantiatePrefab(optModel, old.scene);
+            optGO.name = OptName;
+            Undo.RegisterCreatedObjectUndo(optGO, "Create virus_opt");
+
+            optGO.transform.SetParent(old.transform.parent, false);
+            optGO.transform.SetSiblingIndex(old.transform.GetSiblingIndex());
+            optGO.transform.localPosition = old.transform.localPosition;
+            optGO.transform.localRotation = old.transform.localRotation;
+            optGO.transform.localScale = old.transform.localScale;
+            optGO.SetActive(old.activeSelf);
+
+            TransferComponents(old, optGO);
+
+            string source = IsInstanceOf(old, HeavyModelPath) ? "virus.fbx" : "modelo no optimizado";
+            Debug.Log($"<color=green>[SetupVirusEnemy]</color> '{old.name}' ({source}) reemplazado por '{OptName}' (virus_opt.fbx); valores de componentes traspasados.");
+            Undo.DestroyObjectImmediate(old);
+            return optGO;
+        }
+
+        private static bool IsInstanceOf(GameObject go, string modelPath)
+        {
+            return PrefabUtility.IsAnyPrefabInstanceRoot(go)
+                && PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(go) == modelPath;
+        }
+
+        /// <summary>
+        /// Copia los valores del inspector de los componentes del Virus. Las referencias que apuntaban a componentes
+        /// del objeto viejo se redirigen a los equivalentes del nuevo. El Animator NO se copia: virus_opt usa su propio Avatar.
+        /// </summary>
+        private static void TransferComponents(GameObject from, GameObject to)
+        {
+            System.Type[] types =
+            {
+                typeof(NavMeshAgent), typeof(CapsuleCollider), typeof(VirusStats), typeof(VirusAudio), typeof(VirusAIController),
+            };
+
+            foreach (System.Type type in types)
+            {
+                Component src = from.GetComponent(type);
+                Component dst = to.GetComponent(type);
+                if (dst == null) dst = to.AddComponent(type); // VirusAIController añade sus RequireComponent si faltan
+                if (src != null) EditorUtility.CopySerialized(src, dst);
+            }
+
+            foreach (System.Type type in types) RemapReferences(to.GetComponent(type), from, to);
+        }
+
+        private static void RemapReferences(Component comp, GameObject from, GameObject to)
+        {
+            var so = new SerializedObject(comp);
+            SerializedProperty p = so.GetIterator();
+            while (p.Next(true))
+            {
+                if (p.propertyType != SerializedPropertyType.ObjectReference || p.objectReferenceValue == null) continue;
+                if (!(p.objectReferenceValue is Component refComp) || !refComp.transform.IsChildOf(from.transform)) continue;
+
+                // Animator (en hijos) → el del modelo nuevo; el resto → mismo tipo en la raíz nueva (o null, y Awake lo resuelve).
+                p.objectReferenceValue = refComp is Animator
+                    ? to.GetComponentInChildren<Animator>()
+                    : to.GetComponent(refComp.GetType());
+            }
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
 
         [MenuItem("Tools/Setup Virus Enemy & Animator")]
         public static void RunSetup()
         {
             AnimatorController ctrl = ConfigureVirusController();
 
-            GameObject virusGO = GameObject.Find("virus");
-            if (virusGO == null)
+            List<GameObject> viruses = FindOrCreateOptimizedViruses();
+            foreach (GameObject v in viruses)
             {
-                // Buscar si tiene otro nombre similar o por componente
-                var existingAI = Object.FindFirstObjectByType<VirusAIController>();
-                if (existingAI != null) virusGO = existingAI.gameObject;
+                SetupVirusGameObject(v, ctrl);
+                Debug.Log($"<color=green>[SetupVirusEnemy]</color> '{v.name}' (virus_opt.fbx) configurado con NavMeshAgent, Stats, Audio, AIController y Animator.");
             }
-
-            if (virusGO != null)
-            {
-                SetupVirusGameObject(virusGO, ctrl);
-                Debug.Log("<color=green>[SetupVirusEnemy]</color> ¡Objeto 'virus' configurado exitosamente con NavMeshAgent, Stats, AIController y Animator!");
-            }
-            else
-            {
-                Debug.LogWarning("[SetupVirusEnemy] No se encontró el GameObject 'virus' en la escena activa.");
-            }
+            GameObject virusGO = viruses.Count > 0 ? viruses[0] : null;
 
             SetupNavMeshInScene();
             EnsureAudioListener();
@@ -209,7 +338,7 @@ namespace SudoKill9.EditorTools
             return ctrl;
         }
 
-        private static void CreateAttackTransition(AnimatorStateMachine sm, AnimatorState atkState, AnimatorState returnState, int index)
+        internal static void CreateAttackTransition(AnimatorStateMachine sm, AnimatorState atkState, AnimatorState returnState, int index)
         {
             var anyToAtk = sm.AddAnyStateTransition(atkState);
             anyToAtk.hasExitTime = false;
@@ -277,6 +406,11 @@ namespace SudoKill9.EditorTools
             VirusAIController ai = go.GetComponent<VirusAIController>();
             if (ai == null) ai = go.AddComponent<VirusAIController>();
 
+            // Barra de vida World Space sobre la cabeza (herramienta compartida, altura según el tipo de enemigo).
+            SetupEnemyHealthBars.Ensure(go.GetComponent<SudoKill9.Enemies.EnemyStatsBase>());
+            // VFX de muerte, polvo/propulsión e impacto (herramienta compartida, color según el villano).
+            SetupEnemyVFX.Ensure(go.GetComponent<SudoKill9.Enemies.EnemyStatsBase>());
+
             EditorUtility.SetDirty(go);
         }
 
@@ -288,7 +422,7 @@ namespace SudoKill9.EditorTools
         }
 
         /// <summary>Sin un AudioListener activo no se oye ningún sonido; se añade a la cámara principal si falta.</summary>
-        private static void EnsureAudioListener()
+        internal static void EnsureAudioListener()
         {
             if (Object.FindFirstObjectByType<AudioListener>() != null) return;
 
@@ -320,7 +454,7 @@ namespace SudoKill9.EditorTools
             Debug.Log("<color=green>[SetupVirusEnemy]</color> NavMeshSurface construido en el Plane.");
         }
 
-        private static AnimationClip LoadClip(string fbxPath, bool loop)
+        internal static AnimationClip LoadClip(string fbxPath, bool loop)
         {
             AnimationClip clip = FirstClip(fbxPath);
             if (clip != null && clip.isLooping != loop)
