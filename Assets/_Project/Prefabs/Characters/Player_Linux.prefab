@@ -1266,9 +1266,12 @@ GameObject:
   m_Component:
   - component: {fileID: 2659742051941110012}
   - component: {fileID: 4872807008532335420}
+  - component: {fileID: 7172952320392726510}
+  - component: {fileID: 7172952320392726511}
+  - component: {fileID: 7172952320392726512}
   m_Layer: 0
   m_Name: Player_Linux
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1304,6 +1307,94 @@ MonoBehaviour:
   targetCamera: {fileID: 0}
   starCount: 400
   starSize: 0.003
+--- !u!54 &7172952320392726510
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7172952320392726502}
+  serializedVersion: 5
+  m_Mass: 80
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 0
+  m_IsKinematic: 0
+  m_Interpolate: 1
+  m_Constraints: 112
+--- !u!136 &7172952320392726511
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7172952320392726502}
+  m_Material: {fileID: 13400000, guid: 19139bc674d81224d85fa69fa70ce8ea, type: 2}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.4
+  m_Height: 2
+  m_Direction: 1
+  m_Center: {x: 0, y: 1, z: 0}
+--- !u!114 &7172952320392726512
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7172952320392726502}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 828ba7a50908d0d49b3ff39931517a1c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LinuxSkeletonController
+  walkSpeed: 6
+  sprintMultiplier: 1.7
+  crouchMultiplier: 0.4
+  accelSmoothTime: 0.08
+  decelSmoothTime: 0.05
+  airSmoothMultiplier: 2
+  turnSpeed: 12
+  animator: {fileID: 8913583596757332419}
+  inputXParam: InputX
+  inputZParam: InputZ
+  jumpTriggerParam: Jump
+  isCrouchingParam: IsCrouching
+  animInputSmoothTime: 0.1
+  jumpHeight: 1.6
+  riseGravityMultiplier: 2
+  fallGravityMultiplier: 3.5
+  lowJumpMultiplier: 2.5
+  coyoteTime: 0.08
+  jumpBufferTime: 0.1
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  groundCheckDistance: 0.1
+  maxSlopeAngle: 50
+  showDebug: 1
+  standHeight: 2
+  crouchHeight: 1
 --- !u!1 &7415973972655140230
 GameObject:
   m_ObjectHideFlags: 0
