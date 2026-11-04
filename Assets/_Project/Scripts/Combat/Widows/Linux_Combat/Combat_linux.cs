@@ -155,10 +155,18 @@ public class LinuxCombatIK : MonoBehaviour, IDamageable
     [SerializeField] private float movingSpeedThreshold = 0.5f;
 
     [Header("Animator Parameters / States")]
+    [Tooltip("Controlador de locomoción (quieto, Start Walking, Run Forward, Backward, Left, Right, Jump, Crouch).")]
+    [SerializeField] private RuntimeAnimatorController controllerLocomocion;
     [SerializeField] private string inputXParam = "InputX";
     [SerializeField] private string inputZParam = "InputZ";
     [SerializeField] private string isCrouchingParam = "IsCrouching";
+    [SerializeField] private string jumpTriggerParam = "Jump";
     [SerializeField] private string jumpStateName = "Jump";
+    [Tooltip("Altura máxima del salto en metros utilizando la física de gravedad.")]
+    [SerializeField] private float alturaSalto = 1.6f;
+    [SerializeField] private string dieTriggerParam = "Die";
+    [SerializeField] private string isDeadParam = "IsDead";
+    [SerializeField] private string deathStateName = "StandingDeathForward";
     [SerializeField] private string armaActivaParam = "ArmaActiva";
 
     [Header("Right Hand IK")]
@@ -232,6 +240,14 @@ public class LinuxCombatIK : MonoBehaviour, IDamageable
     private bool hasArmaActivaParam;
     private int disparandoQuietoHash;
     private bool hasDisparandoQuietoParam;
+    private int correrApuntandoHash;
+    private bool hasCorrerApuntandoParam;
+    private int jumpHash;
+    private bool hasJumpParam;
+    private int dieHash;
+    private bool hasDieParam;
+    private int isDeadHash;
+    private bool hasIsDeadParam;
     private bool estaApuntando = false;
     private float tiempoProximoDisparo = 0f;
     private float temporizadorGuardarArma = 0f;
@@ -303,6 +319,7 @@ public class LinuxCombatIK : MonoBehaviour, IDamageable
             if (vidaInterna <= 0f)
             {
                 estaMuerto = true;
+                EjecutarAnimacionMuerte();
                 OnPlayerDied?.Invoke();
             }
         }
@@ -384,8 +401,12 @@ public class LinuxCombatIK : MonoBehaviour, IDamageable
         inputXHash = Animator.StringToHash(inputXParam);
         inputZHash = Animator.StringToHash(inputZParam);
         crouchHash = Animator.StringToHash(isCrouchingParam);
+        jumpHash = Animator.StringToHash(jumpTriggerParam);
+        dieHash = Animator.StringToHash(dieTriggerParam);
+        isDeadHash = Animator.StringToHash(isDeadParam);
         armaActivaHash = Animator.StringToHash(armaActivaParam);
         disparandoQuietoHash = Animator.StringToHash("DisparandoQuieto");
+        correrApuntandoHash = Animator.StringToHash("CorrerApuntando");
         bool hasX = false, hasZ = false;
         if (animator != null)
         {
@@ -394,8 +415,12 @@ public class LinuxCombatIK : MonoBehaviour, IDamageable
                 if (p.nameHash == inputXHash && p.type == AnimatorControllerParameterType.Float) hasX = true;
                 if (p.nameHash == inputZHash && p.type == AnimatorControllerParameterType.Float) hasZ = true;
                 if (p.nameHash == crouchHash && p.type == AnimatorControllerParameterType.Bool) hasCrouchParam = true;
+                if (p.nameHash == jumpHash && p.type == AnimatorControllerParameterType.Trigger) hasJumpParam = true;
+                if (p.nameHash == dieHash && p.type == AnimatorControllerParameterType.Trigger) hasDieParam = true;
+                if (p.nameHash == isDeadHash && p.type == AnimatorControllerParameterType.Bool) hasIsDeadParam = true;
                 if (p.nameHash == armaActivaHash && p.type == AnimatorControllerParameterType.Bool) hasArmaActivaParam = true;
                 if (p.nameHash == disparandoQuietoHash && p.type == AnimatorControllerParameterType.Bool) hasDisparandoQuietoParam = true;
+                if (p.nameHash == correrApuntandoHash && p.type == AnimatorControllerParameterType.Bool) hasCorrerApuntandoParam = true;
             }
         }
         hasInputParams = hasX && hasZ;
@@ -503,8 +528,73 @@ public class LinuxCombatIK : MonoBehaviour, IDamageable
 
     private void OnPlayerDeathInternal()
     {
+        if (estaMuerto) return;
         estaMuerto = true;
+        EjecutarAnimacionMuerte();
         OnPlayerDied?.Invoke();
+    }
+
+    /// <summary>
+    /// Fuerza el estado de muerte del jugador, ejecutando la animación StandingDeathForward
+    /// y notificando a la interfaz de derrota (Kernel Panic).
+    /// </summary>
+    public void Morir()
+    {
+        if (estaMuerto) return;
+        estaMuerto = true;
+        if (playerHealth != null && !playerHealth.IsDead)
+        {
+            playerHealth.Kill();
+        }
+        else
+        {
+            vidaInterna = 0f;
+            OnPlayerHealthChanged?.Invoke((int)vidaInterna, (int)maxVidaInterna);
+        }
+        EjecutarAnimacionMuerte();
+        OnPlayerDied?.Invoke();
+    }
+
+    /// <summary>
+    /// Desactiva combate e IK y dispara la animación de muerte StandingDeathForward.
+    /// </summary>
+    private void EjecutarAnimacionMuerte()
+    {
+        BloquearCursor(false);
+        if (crosshairUI != null) crosshairUI.EstaApuntando = false;
+        estaApuntando = false;
+        armaActiva = false;
+
+        if (animator != null)
+        {
+            if (hasIsDeadParam) animator.SetBool(isDeadHash, true);
+            if (hasDieParam) animator.SetTrigger(dieHash);
+
+            // Transición suave directa a StandingDeathForward
+            animator.CrossFadeInFixedTime(deathStateName, 0.12f, 0, 0f);
+        }
+    }
+
+    /// <summary>
+    /// Restablece completamente la vida y estado del jugador tras un reinicio de partida.
+    /// </summary>
+    public void RestaurarVidaCompletaJugador()
+    {
+        estaMuerto = false;
+        if (animator != null)
+        {
+            if (hasIsDeadParam) animator.SetBool(isDeadHash, false);
+            animator.CrossFadeInFixedTime("Locomotion", 0.2f);
+        }
+        if (playerHealth != null)
+        {
+            playerHealth.RestaurarVidaCompleta();
+        }
+        else
+        {
+            vidaInterna = maxVidaInterna;
+            OnPlayerHealthChanged?.Invoke((int)vidaInterna, (int)maxVidaInterna);
+        }
     }
 
     /// <summary>
@@ -1165,6 +1255,14 @@ public class LinuxCombatIK : MonoBehaviour, IDamageable
 
         Vector3 direccionMovimiento = CalcularDireccionMovimientoHorizontal(inputHorizontal, inputVertical);
 
+        bool saltoPresionado = Input.GetButtonDown("Jump") || Input.GetKeyDown(KeyCode.Space);
+#if ENABLE_INPUT_SYSTEM
+        if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame)
+        {
+            saltoPresionado = true;
+        }
+#endif
+
         if (controlador != null)
         {
             if (controlador.isGrounded)
@@ -1172,6 +1270,22 @@ public class LinuxCombatIK : MonoBehaviour, IDamageable
                 if (velocidadCaida.y < 0f)
                 {
                     velocidadCaida.y = -2f;
+                }
+
+                if (saltoPresionado && !IsDead)
+                {
+                    velocidadCaida.y = Mathf.Sqrt(2f * Mathf.Abs(gravedad) * alturaSalto);
+                    if (animator != null)
+                    {
+                        if (hasJumpParam)
+                        {
+                            animator.SetTrigger(jumpHash);
+                        }
+                        else
+                        {
+                            animator.CrossFadeInFixedTime(jumpStateName, 0.08f);
+                        }
+                    }
                 }
             }
             else
@@ -1364,11 +1478,22 @@ public class LinuxCombatIK : MonoBehaviour, IDamageable
         }
 #endif
         bool estaMoviendose = movInputMag > 0.1f;
-        // Firing_Rifle_Quiet cuando: apunta (click derecho), o dispara quieto, o tiene arma activa y no se mueve
-        bool dispaRandomQuieto = armaActiva && (estaApuntando || !estaMoviendose);
+        bool apuntandoODisparando = estaApuntando || clicIzquierdoMantenido;
+
+        // Crouched Run: el jugador camina MIENTRAS apunta (clic derecho) o dispara (clic izquierdo)
+        bool correrApuntando = armaActiva && estaMoviendose && apuntandoODisparando && hasCorrerApuntandoParam;
+
+        // Firing_Rifle_Quiet: arma activa y quieto (sin WASD). Si no existe el estado Crouched Run,
+        // se conserva el comportamiento anterior (apuntar fuerza la pose de disparo aunque se mueva).
+        bool dispaRandomQuieto = armaActiva && !correrApuntando &&
+                                 (!estaMoviendose || (!hasCorrerApuntandoParam && estaApuntando));
         if (hasDisparandoQuietoParam && animator != null)
         {
             animator.SetBool(disparandoQuietoHash, dispaRandomQuieto);
+        }
+        if (hasCorrerApuntandoParam && animator != null)
+        {
+            animator.SetBool(correrApuntandoHash, correrApuntando);
         }
 
         // 2. Disparo con Clic Izquierdo (lanza bala física desde la punta del arma hacia el centro de la mira)
@@ -1436,6 +1561,10 @@ public class LinuxCombatIK : MonoBehaviour, IDamageable
             if (hasDisparandoQuietoParam && animator != null)
             {
                 animator.SetBool(disparandoQuietoHash, false);
+            }
+            if (hasCorrerApuntandoParam && animator != null)
+            {
+                animator.SetBool(correrApuntandoHash, false);
             }
         }
     }
@@ -1937,6 +2066,23 @@ public class LinuxCombatIK : MonoBehaviour, IDamageable
     private void OnAnimatorIK(int layerIndex)
     {
         if (animator == null) animator = GetComponent<Animator>();
+
+        if (IsDead)
+        {
+            if (animator != null && animator.isHuman)
+            {
+                animator.SetLookAtWeight(0f);
+                animator.SetIKPositionWeight(AvatarIKGoal.RightHand, 0f);
+                animator.SetIKRotationWeight(AvatarIKGoal.RightHand, 0f);
+                animator.SetIKPositionWeight(AvatarIKGoal.LeftHand, 0f);
+                animator.SetIKRotationWeight(AvatarIKGoal.LeftHand, 0f);
+                animator.SetIKPositionWeight(AvatarIKGoal.LeftFoot, 0f);
+                animator.SetIKRotationWeight(AvatarIKGoal.LeftFoot, 0f);
+                animator.SetIKPositionWeight(AvatarIKGoal.RightFoot, 0f);
+                animator.SetIKRotationWeight(AvatarIKGoal.RightFoot, 0f);
+            }
+            return;
+        }
 
         // 1. Apuntado de torso superior, hombros y cabeza hacia la mira configurada
         if (animator != null && animator.isHuman)

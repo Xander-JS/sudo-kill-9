@@ -34,6 +34,18 @@ public class WindowsCommandAttacks : MonoBehaviour
     /// <summary>Evento emitido al dispararse la Pantalla Azul con duración personalizada.</summary>
     public static event System.Action<float> OnBSODTriggeredWithDuration;
 
+    /// <summary>Evento emitido al iniciar cualquier habilidad especial.</summary>
+    public static event System.Action<string> OnSpecialAttackStarted;
+
+    /// <summary>Evento emitido al finalizar cualquier habilidad especial.</summary>
+    public static event System.Action<string, bool> OnSpecialAttackFinished;
+
+    /// <summary>Evento emitido al iniciar la ejecución física de un ataque cuerpo a cuerpo.</summary>
+    public static event System.Action<string> OnMeleeAttackStarted;
+
+    /// <summary>Evento emitido al finalizar un ataque cuerpo a cuerpo (indicando si conectó impacto).</summary>
+    public static event System.Action<string, bool> OnMeleeAttackFinished;
+
     /// <summary>Emite el evento de BSOD con la duración deseada sin disparos redundantes.</summary>
     public static void NotificarBSOD(float duracion = 5.0f)
     {
@@ -270,6 +282,26 @@ public class WindowsCommandAttacks : MonoBehaviour
     private Transform playerTarget;
     private LinuxCombatIK playerCombatIK;
 
+    [Header("8. Coordinación Táctica de Ataques")]
+    [Tooltip("Si está activo, WindowsBossAI decide tácticamente cuándo solicitar habilidades especiales y ataques cuerpo a cuerpo.")]
+    [SerializeField] private bool coordinadoPorBossAI = true;
+
+    [Header("9. Combate Físico Melee")]
+    [Tooltip("Daño infligido por Patada ordinaria.")]
+    [SerializeField] private float danoPatada = 1.0f;
+
+    [Tooltip("Daño infligido por Ataque_Patada pesado.")]
+    [SerializeField] private float danoAtaquePatada = 1.5f;
+
+    [Tooltip("Daño infligido por Izquiedazo.")]
+    [SerializeField] private float danoIzquiedazo = 1.0f;
+
+    [Tooltip("Daño infligido por Tornado giratorio.")]
+    [SerializeField] private float danoTornadoMelee = 2.0f;
+
+    private bool estaEjecutandoAtaqueMelee = false;
+    private Coroutine corrutinaAtaqueMelee;
+
     // ========================================================================= //
     // PROPIEDADES PÚBLICAS                                                      //
     // ========================================================================= //
@@ -279,6 +311,7 @@ public class WindowsCommandAttacks : MonoBehaviour
     public bool EstaDisparandoRayo => estaDisparandoRayo;
     public bool EstaEjecutandoMagicFire0 => estaEjecutandoMagicFire0;
     public bool EstaEjecutandoMagicFire1 => estaEjecutandoMagicFire1;
+    public bool EstaEjecutandoAtaqueMelee => estaEjecutandoAtaqueMelee;
     public bool FirewallActivo => firewallActivo;
     public bool EstaEjecutandoAtaqueEspecial => 
         estaCargandoRayo || 
@@ -337,13 +370,24 @@ public class WindowsCommandAttacks : MonoBehaviour
         }
 #endif
 
-        // 2. Si está ejecutando un ataque especial activo, no iniciar nuevas rutinas
-        if (EstaEjecutandoAtaqueEspecial)
+        // 2. Si está ejecutando un ataque especial activo o ataque melee, no iniciar nuevas rutinas
+        if (EstaEjecutandoAtaqueEspecial || estaEjecutandoAtaqueMelee)
         {
             return;
         }
 
-        int fase = bossAI.FaseActual;
+        int fase = bossAI != null ? bossAI.FaseActual : 1;
+
+        // Si la IA táctica (WindowsBossAI) está coordinando los ataques, permitirle decidir cuándo atacar
+        if (coordinadoPorBossAI && bossAI != null)
+        {
+            // El esquive reactivo ante proyectiles entrantes (SaltaLoco) opera como reflejo defensivo
+            if (fase >= 2 && esquiveHabilitado && (Time.time - ultimoTiempoEsquive) >= cooldownEsquive)
+            {
+                DetectarBalasYEsquivar();
+            }
+            return;
+        }
 
         // ATAQUE 1: Magic Fire 0 (Disponible desde Fase 1 en adelante)
         if (fase >= faseMinimaMagicFire0 && magicFire0Habilitado)
@@ -420,6 +464,7 @@ public class WindowsCommandAttacks : MonoBehaviour
         if (playerTarget == null) yield break;
 
         estaEjecutandoMagicFire0 = true;
+        OnSpecialAttackStarted?.Invoke("MagicFire0");
 
         // 1. REGLA FUNDAMENTAL: Capturar la posición actual de Linux al inicio exacto del ataque
         Vector3 posicionCapturadaLinux = playerTarget.position;
@@ -484,6 +529,7 @@ public class WindowsCommandAttacks : MonoBehaviour
 
         estaEjecutandoMagicFire0 = false;
         instanciaMagicFire0Activa = null;
+        OnSpecialAttackFinished?.Invoke("MagicFire0", true);
     }
 
     // ========================================================================= //
@@ -521,9 +567,15 @@ public class WindowsCommandAttacks : MonoBehaviour
         estaDisparandoRayo = false;
         estaExhausto = false;
         estaEjecutandoMagicFire1 = true;
+        OnSpecialAttackStarted?.Invoke("MagicFire1");
 
         EmitirComando("> powershell.exe -ExecutionPolicy Bypass -Command \"Invoke-MagicFireHomingStrike\"");
         EmitirComando("> [MAGIC FIRE 1] Concentrando plasma dirigido... ¡PROYECTIL HOMING EN CAMINO!");
+
+        if (bossAI != null && bossAI.GeminiDialogue != null)
+        {
+            bossAI.GeminiDialogue.SolicitarDialogo(WindowsAIGeminiDialogue.DialogueContext.CargarKamehameha, "Windows carga el ataque Magic Fire 1.");
+        }
 
         if (animator != null && !string.IsNullOrEmpty(animacionCarga))
         {
@@ -536,6 +588,7 @@ public class WindowsCommandAttacks : MonoBehaviour
             if (bossAI != null && bossAI.IsDead)
             {
                 LimpiarAtaquesActivos();
+                OnSpecialAttackFinished?.Invoke("MagicFire1", false);
                 yield break;
             }
 
@@ -562,6 +615,11 @@ public class WindowsCommandAttacks : MonoBehaviour
         // FASE 2: DISPARO Y PERSECUCIÓN HOMING DE MAGIC FIRE 1 (3 SEGUNDOS MÁX) //
         // --------------------------------------------------------------------- //
         estaDisparandoRayo = true;
+
+        if (bossAI != null && bossAI.GeminiDialogue != null)
+        {
+            bossAI.GeminiDialogue.SolicitarDialogo(WindowsAIGeminiDialogue.DialogueContext.DispararKamehameha, "Windows dispara el proyectil destructor.");
+        }
 
         if (animator != null && !string.IsNullOrEmpty(animacionDisparo))
         {
@@ -605,6 +663,7 @@ public class WindowsCommandAttacks : MonoBehaviour
                 if (bossAI != null && bossAI.IsDead)
                 {
                     LimpiarAtaquesActivos();
+                    OnSpecialAttackFinished?.Invoke("MagicFire1", false);
                     yield break;
                 }
                 tiempoEsperado += Time.deltaTime;
@@ -622,6 +681,11 @@ public class WindowsCommandAttacks : MonoBehaviour
         estaExhausto = true;
         EmitirComando("> [CPU OVERHEAT 100%] Windows en 'PoseCansado'... ¡RECIBE 1.5x DAÑO CRÍTICO!");
 
+        if (bossAI != null && bossAI.GeminiDialogue != null)
+        {
+            bossAI.GeminiDialogue.SolicitarDialogo(WindowsAIGeminiDialogue.DialogueContext.EstadoExhausto, "Windows queda en PoseCansado vulnerable por 3 segundos.");
+        }
+
         if (animator != null && !string.IsNullOrEmpty(animacionExhausto))
         {
             animator.CrossFadeInFixedTime(animacionExhausto, transicionExhausto);
@@ -633,6 +697,7 @@ public class WindowsCommandAttacks : MonoBehaviour
             if (bossAI != null && bossAI.IsDead)
             {
                 LimpiarAtaquesActivos();
+                OnSpecialAttackFinished?.Invoke("MagicFire1", false);
                 yield break;
             }
             transcurridoExhausto += Time.deltaTime;
@@ -648,6 +713,7 @@ public class WindowsCommandAttacks : MonoBehaviour
         }
 
         corrutinaMagicFire1 = null;
+        OnSpecialAttackFinished?.Invoke("MagicFire1", true);
     }
 
     private Vector3 ObtenerPuntoDisparo()
@@ -701,11 +767,16 @@ public class WindowsCommandAttacks : MonoBehaviour
     private IEnumerator RutinaEsquive(Vector3 direccionLateral)
     {
         estaEsquivando = true;
+        OnSpecialAttackStarted?.Invoke("SaltaLoco");
 
-        var navAgent = GetComponent<UnityEngine.AI.NavMeshAgent>();
-        if (navAgent != null && navAgent.isOnNavMesh)
+        if (bossAI != null)
         {
-            navAgent.isStopped = true;
+            bossAI.BeginExternalMovement();
+        }
+        else
+        {
+            var navAgent = GetComponent<UnityEngine.AI.NavMeshAgent>();
+            if (navAgent != null && navAgent.isOnNavMesh) navAgent.isStopped = true;
         }
 
         if (animator != null)
@@ -714,6 +785,11 @@ public class WindowsCommandAttacks : MonoBehaviour
         }
 
         EmitirComando("> [DEFENSE_PROTOCOL] SaltaLoco.exe: Realizando evasión balística...");
+
+        if (bossAI != null && bossAI.GeminiDialogue != null)
+        {
+            bossAI.GeminiDialogue.SolicitarDialogo(WindowsAIGeminiDialogue.DialogueContext.EsquiveSaltaLoco, "Windows esquiva proyectiles con SaltaLoco.");
+        }
 
         Vector3 posInicial = transform.position;
         Vector3 posDestino = posInicial + direccionLateral * distanciaEsquive;
@@ -731,13 +807,22 @@ public class WindowsCommandAttacks : MonoBehaviour
             yield return null;
         }
 
-        if (navAgent != null && navAgent.isOnNavMesh)
+        if (bossAI != null)
         {
-            navAgent.Warp(transform.position);
-            navAgent.isStopped = false;
+            bossAI.EndExternalMovement();
+        }
+        else
+        {
+            var navAgent = GetComponent<UnityEngine.AI.NavMeshAgent>();
+            if (navAgent != null && navAgent.isOnNavMesh)
+            {
+                navAgent.Warp(transform.position);
+                navAgent.isStopped = false;
+            }
         }
 
         estaEsquivando = false;
+        OnSpecialAttackFinished?.Invoke("SaltaLoco", true);
     }
 
     // ========================================================================= //
@@ -747,6 +832,7 @@ public class WindowsCommandAttacks : MonoBehaviour
     public void EjecutarTaskkill()
     {
         BuscarJugador();
+        OnSpecialAttackStarted?.Invoke("Taskkill");
         EmitirComando("> C:\\Windows\\System32> taskkill /f /im tux_movement.exe");
 
         if (playerCombatIK != null)
@@ -754,6 +840,12 @@ public class WindowsCommandAttacks : MonoBehaviour
             playerCombatIK.AplicarRalentizacion(duracionRalentizacion, factorRalentizacion);
             EmitirComando($"> [KERNEL ALERT] tux_movement.exe suspendido por {duracionRalentizacion:0.0}s (30% Vel)");
         }
+
+        if (bossAI != null && bossAI.GeminiDialogue != null)
+        {
+            bossAI.GeminiDialogue.SolicitarDialogo(WindowsAIGeminiDialogue.DialogueContext.EjecutarTaskkill, "Windows ejecuta taskkill sobre Tux.");
+        }
+        OnSpecialAttackFinished?.Invoke("Taskkill", true);
     }
 
     // ========================================================================= //
@@ -769,10 +861,16 @@ public class WindowsCommandAttacks : MonoBehaviour
     private IEnumerator RutinaFirewall()
     {
         firewallActivo = true;
+        OnSpecialAttackStarted?.Invoke("Firewall");
         if (escudoVisual != null) escudoVisual.SetActive(true);
 
         EmitirComando("> C:\\Windows\\System32> netsh advfirewall set allprofiles state on");
         EmitirComando("> [FIREWALL ACTIVO] Bloqueando tráfico y proyectiles frontales...");
+
+        if (bossAI != null && bossAI.GeminiDialogue != null)
+        {
+            bossAI.GeminiDialogue.SolicitarDialogo(WindowsAIGeminiDialogue.DialogueContext.ActivarFirewall, "Windows levanta netsh firewall.");
+        }
 
         yield return new WaitForSeconds(duracionFirewall);
 
@@ -781,6 +879,7 @@ public class WindowsCommandAttacks : MonoBehaviour
 
         EmitirComando("> [FIREWALL REPOSO] Escudo perimetral desactivado temporalmente.");
         corrutinaFirewall = null;
+        OnSpecialAttackFinished?.Invoke("Firewall", true);
     }
 
     public bool NotificarImpactoEnEscudo(Collider colBala, Vector3 puntoImpacto, Vector3 dirBala)
@@ -832,6 +931,129 @@ public class WindowsCommandAttacks : MonoBehaviour
     }
 
     // ========================================================================= //
+    // 8. COMBATE FÍSICO MELEE (Patada, Ataque_Patada, Izquiedazo, Tornado)      //
+    // ========================================================================= //
+
+    /// <summary>
+    /// Ejecuta físicamente un ataque cuerpo a cuerpo solicitado por WindowsBossAI.
+    /// Sincroniza la animación en el Animator y calcula el impacto frame a frame o por ventana temporal.
+    /// </summary>
+    public void EjecutarAtaqueMelee(string nombreAtaque)
+    {
+        if (bossAI != null && bossAI.IsDead) return;
+        if (estaEjecutandoAtaqueMelee || EstaEjecutandoAtaqueEspecial) return;
+
+        if (corrutinaAtaqueMelee != null) StopCoroutine(corrutinaAtaqueMelee);
+        corrutinaAtaqueMelee = StartCoroutine(RutinaAtaqueMelee(nombreAtaque));
+    }
+
+    private IEnumerator RutinaAtaqueMelee(string nombreAtaque)
+    {
+        estaEjecutandoAtaqueMelee = true;
+        OnMeleeAttackStarted?.Invoke(nombreAtaque);
+
+        if (animator != null)
+        {
+            animator.CrossFadeInFixedTime(nombreAtaque, 0.10f);
+        }
+
+        // Tiempos de impacto y rango según la animación seleccionada
+        float duracionTotal = 1.0f;
+        float tiempoImpacto = 0.32f;
+        float rangoImpacto = 2.4f;
+        float danoAtaque = danoPatada;
+
+        switch (nombreAtaque)
+        {
+            case "Patada":
+                duracionTotal = 0.95f;
+                tiempoImpacto = 0.30f;
+                rangoImpacto = 2.3f;
+                danoAtaque = danoPatada;
+                break;
+            case "Ataque_Patada":
+                duracionTotal = 1.25f;
+                tiempoImpacto = 0.42f;
+                rangoImpacto = 3.2f;
+                danoAtaque = danoAtaquePatada;
+                break;
+            case "Izquiedazo":
+                duracionTotal = 0.90f;
+                tiempoImpacto = 0.28f;
+                rangoImpacto = 2.2f;
+                danoAtaque = danoIzquiedazo;
+                break;
+            case "Tornado":
+                duracionTotal = 1.40f;
+                tiempoImpacto = 0.38f;
+                rangoImpacto = 3.5f;
+                danoAtaque = danoTornadoMelee;
+                break;
+            case "Salto":
+                duracionTotal = 1.30f;
+                tiempoImpacto = 0.48f;
+                rangoImpacto = 3.0f;
+                danoAtaque = 2.0f;
+                break;
+        }
+
+        float transcurrido = 0f;
+        bool danoAplicado = false;
+
+        while (transcurrido < duracionTotal)
+        {
+            if (bossAI != null && bossAI.IsDead)
+            {
+                estaEjecutandoAtaqueMelee = false;
+                corrutinaAtaqueMelee = null;
+                yield break;
+            }
+
+            transcurrido += Time.deltaTime;
+
+            if (!danoAplicado && transcurrido >= tiempoImpacto)
+            {
+                danoAplicado = true;
+                VerificarYAplicarDanoMelee(nombreAtaque, rangoImpacto, danoAtaque);
+            }
+
+            yield return null;
+        }
+
+        estaEjecutandoAtaqueMelee = false;
+        corrutinaAtaqueMelee = null;
+        OnMeleeAttackFinished?.Invoke(nombreAtaque, true);
+    }
+
+    public void VerificarYAplicarDanoMelee(string nombreAtaque, float rango, float dano)
+    {
+        BuscarJugador();
+        if (playerTarget == null) return;
+
+        float dist = Vector3.Distance(transform.position, playerTarget.position);
+        if (dist <= rango)
+        {
+            IDamageable victima = playerTarget.GetComponent<IDamageable>() ??
+                                  playerTarget.GetComponentInParent<IDamageable>() ??
+                                  playerTarget.GetComponentInChildren<IDamageable>();
+
+            if (victima != null && !victima.IsDead)
+            {
+                victima.TakeDamage(dano);
+
+                if (bossAI != null && bossAI.GeminiDialogue != null)
+                {
+                    bossAI.GeminiDialogue.SolicitarDialogo(WindowsAIGeminiDialogue.DialogueContext.GolpeConectado, $"Windows conectó {nombreAtaque} contra Tux.");
+                }
+
+#if UNITY_EDITOR
+                Debug.Log($"<color=orange>[WindowsCommandAttacks]</color> Impacto físico {nombreAtaque} aplicado a Tux. Daño: {dano}");
+#endif
+            }
+        }
+    }
+
+    // ========================================================================= //
     // UTILIDADES Y SOPORTE VISUAL                                               //
     // ========================================================================= //
 
@@ -873,6 +1095,11 @@ public class WindowsCommandAttacks : MonoBehaviour
         StopAllCoroutines();
         corrutinaMagicFire1 = null;
         corrutinaFirewall = null;
+        if (corrutinaAtaqueMelee != null)
+        {
+            corrutinaAtaqueMelee = null;
+        }
+        estaEjecutandoAtaqueMelee = false;
 
         if (instanciaMagicFire0Activa != null)
         {

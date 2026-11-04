@@ -111,6 +111,8 @@ namespace SudoKill9.EditorTools
             AnimationClip poseCansadoClip = LoadClip(ClipsDir + "/PoseCansado.fbx", true);
             AnimationClip gritoClip       = LoadClip(ClipsDir + "/Grito.fbx", false);
             AnimationClip seRieClip       = LoadClip(ClipsDir + "/Se rie.fbx", false);
+            AnimationClip izquiedazoClip  = LoadClip(ClipsDir + "/Izquiedazo.fbx", false);
+            AnimationClip mueveCuelloClip = LoadClip(ClipsDir + "/Mueve_Cuello.fbx", false);
 
             AnimatorState sPrep = null;
             foreach (var s in sm.states)
@@ -133,6 +135,12 @@ namespace SudoKill9.EditorTools
 
             // Asegurar estado Se rie
             AsegurarEstadoConRetorno(sm, "Se rie", seRieClip, new Vector3(700f, -50f, 0f), sPrep, 0.85f);
+
+            // Asegurar estado Izquiedazo
+            AsegurarEstadoConRetorno(sm, "Izquiedazo", izquiedazoClip, new Vector3(900f, -50f, 0f), sPrep, 0.85f);
+
+            // Asegurar estado Mueve_Cuello
+            AsegurarEstadoConRetorno(sm, "Mueve_Cuello", mueveCuelloClip, new Vector3(1100f, -50f, 0f), sPrep, 0.90f);
 
             EditorUtility.SetDirty(ctrl);
             AssetDatabase.SaveAssets();
@@ -312,16 +320,62 @@ namespace SudoKill9.EditorTools
             }
             soBoss.ApplyModifiedPropertiesWithoutUndo();
 
-            // 4. WindowsHeadHealthBar (Barra de salud sobre la cabeza en World Space con 2 vidas)
-            WindowsHeadHealthBar headBar = windowsGO.GetComponent<WindowsHeadHealthBar>();
-            if (headBar == null) headBar = windowsGO.AddComponent<WindowsHeadHealthBar>();
+            // 4. WindowsHeadHealthBar (Barra de salud sobre la cabeza en World Space con 2 vidas y burbuja de diálogo)
+            WindowsHeadHealthBar oldHeadBarOnBoss = windowsGO.GetComponent<WindowsHeadHealthBar>();
+            if (oldHeadBarOnBoss != null)
+            {
+                Object.DestroyImmediate(oldHeadBarOnBoss, true);
+            }
+
+            WindowsHeadHealthBar headBar = Object.FindFirstObjectByType<WindowsHeadHealthBar>();
+            if (headBar == null)
+            {
+                GameObject headBarGO = new GameObject("WindowsHeadHealthBar");
+                headBar = headBarGO.AddComponent<WindowsHeadHealthBar>();
+            }
             headBar.ConfigurarParaBoss(bossAI);
+
+            // 5. WindowsAIGeminiDialogue (Módulo Híbrido de Diálogos)
+            WindowsAIGeminiDialogue dialogue = windowsGO.GetComponent<WindowsAIGeminiDialogue>();
+            if (dialogue == null) dialogue = windowsGO.AddComponent<WindowsAIGeminiDialogue>();
+
+            // 6. WindowsVoiceManager (Microservicio Local TTS de voz sintética)
+            SudoKill9.Audio.WindowsVoiceManager voiceManager = windowsGO.GetComponent<SudoKill9.Audio.WindowsVoiceManager>();
+            if (voiceManager == null) voiceManager = windowsGO.AddComponent<SudoKill9.Audio.WindowsVoiceManager>();
+            voiceManager.ConfigurarAudioSource3D();
+
+            // 7. NavMeshAgent (Desplazamiento inteligente)
+            UnityEngine.AI.NavMeshAgent navAgent = windowsGO.GetComponent<UnityEngine.AI.NavMeshAgent>();
+            if (navAgent == null) navAgent = windowsGO.AddComponent<UnityEngine.AI.NavMeshAgent>();
+            if (navAgent != null)
+            {
+                navAgent.stoppingDistance = 1.4f;
+                navAgent.updateRotation = false;
+                navAgent.acceleration = 16f;
+            }
+
+            // 8. WindowsBossSFX (Audio espacial 3D: Running Snow 1 & 2 para trote/carrera y efectos de poderes)
+            SudoKill9.Audio.WindowsBossSFX bossSFX = windowsGO.GetComponent<SudoKill9.Audio.WindowsBossSFX>();
+            if (bossSFX == null) bossSFX = windowsGO.AddComponent<SudoKill9.Audio.WindowsBossSFX>();
+            bossSFX.ConfigurarCanalesAudio3D();
+            bossSFX.GarantizarClipsDeAudio();
+
+            SerializedObject soSync = new SerializedObject(bossAI);
+            if (soSync.FindProperty("geminiDialogue") != null) soSync.FindProperty("geminiDialogue").objectReferenceValue = dialogue;
+            if (soSync.FindProperty("voiceManager") != null) soSync.FindProperty("voiceManager").objectReferenceValue = voiceManager;
+            if (soSync.FindProperty("bossSFX") != null) soSync.FindProperty("bossSFX").objectReferenceValue = bossSFX;
+            if (soSync.FindProperty("navAgent") != null) soSync.FindProperty("navAgent").objectReferenceValue = navAgent;
+            if (soSync.FindProperty("headHealthBar") != null) soSync.FindProperty("headHealthBar").objectReferenceValue = headBar;
+            soSync.ApplyModifiedPropertiesWithoutUndo();
 
             EditorUtility.SetDirty(windowsGO);
             EditorUtility.SetDirty(bossAI);
             EditorUtility.SetDirty(cmdAttacks);
             EditorUtility.SetDirty(headBar);
-            Debug.Log("<color=green>[SetupCombatUI]</color> Jefe 'windows' configurado con WindowsBossAI, WindowsCommandAttacks, WindowsHeadHealthBar y prefabs de Hovl Studio.");
+            if (dialogue != null) EditorUtility.SetDirty(dialogue);
+            if (voiceManager != null) EditorUtility.SetDirty(voiceManager);
+            if (bossSFX != null) EditorUtility.SetDirty(bossSFX);
+            Debug.Log("<color=green>[SetupCombatUI]</color> Jefe 'windows' configurado con WindowsBossAI, WindowsCommandAttacks, NavMeshAgent, WindowsAIGeminiDialogue, WindowsVoiceManager, WindowsBossSFX y WindowsHeadHealthBar.");
         }
 
         private static void ConfigurarCanvasCombate()
@@ -1018,6 +1072,40 @@ namespace SudoKill9.EditorTools
             finally
             {
                 Object.DestroyImmediate(dummyCanvas);
+            }
+
+            // -------------------------------------------------------------
+            // SECCIÓN 4: EFECTOS DE SONIDO 3D Y RUNNING SNOW (WindowsBossSFX)
+            // -------------------------------------------------------------
+            sb.AppendLine("\n--- 4. VERIFICACIÓN DE EFECTOS DE SONIDO 3D (WindowsBossSFX) ---");
+
+            GameObject dummySfxGO = new GameObject("Dummy_SFX_Test");
+            try
+            {
+                var sfx = dummySfxGO.AddComponent<SudoKill9.Audio.WindowsBossSFX>();
+                sfx.ConfigurarCanalesAudio3D();
+                sfx.GarantizarClipsDeAudio();
+
+                bool chFootOk = sfx.SourceFootsteps != null && sfx.SourceFootsteps.spatialBlend >= 0.99f;
+                bool chPowOk = sfx.SourcePowers != null && sfx.SourcePowers.spatialBlend >= 0.99f;
+                bool chLoopOk = sfx.SourceLoop != null && sfx.SourceLoop.spatialBlend >= 0.99f;
+                bool sfxChannelsOk = chFootOk && chPowOk && chLoopOk;
+                sb.AppendLine($"[TEST 4.1] Canales de Audio 3D desacoplados (Footsteps, Powers, Loop): {(sfxChannelsOk ? "PASS" : "FAIL")}");
+                exitoTotal &= sfxChannelsOk;
+
+                bool snowClipsOk = sfx.ClipRunningSnow1 != null && sfx.ClipRunningSnow2 != null;
+                sb.AppendLine($"[TEST 4.2] Clips de pisadas en nieve Running Snow 1 & 2 asignados: {(snowClipsOk ? "PASS" : "FAIL")}");
+                exitoTotal &= snowClipsOk;
+
+                sfx.ReproducirPaso(1.0f);
+                sfx.ReproducirImpactoHit();
+                sfx.ReproducirBloqueoFirewall();
+                sfx.DetenerTodosLosSonidos();
+                sb.AppendLine($"[TEST 4.3] Ejecución de llamadas de audio sin excepciones: PASS");
+            }
+            finally
+            {
+                Object.DestroyImmediate(dummySfxGO);
             }
 
             sb.AppendLine($"\n=== RESULTADO FINAL: {(exitoTotal ? "TODOS LOS TESTS APROBADOS (PASS)" : "FALLOS DETECTADOS (FAIL)")} ===");

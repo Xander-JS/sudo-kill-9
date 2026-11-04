@@ -11,6 +11,7 @@ using SudoKill9.Combat;
 /// - Conexión asíncrona a la API de Google Gemini (sin bloquear el bucle de juego a 60 FPS).
 /// - Fallback offline robusto: si no hay conexión o no hay API Key, utiliza un repositorio local
 ///   de más de 40 frases icónicas y comandos cómicos del sistema operativo.
+/// - Seguridad de ciclo de vida: cancela peticiones y corrutinas si el objeto es destruido, desactivado o si Windows muere.
 /// </summary>
 public class WindowsAIGeminiDialogue : MonoBehaviour
 {
@@ -22,25 +23,27 @@ public class WindowsAIGeminiDialogue : MonoBehaviour
     [Tooltip("Activa o desactiva las peticiones a la API de Gemini.")]
     [SerializeField] private bool habilitarGeminiAPI = true;
 
-    [Tooltip("API Key de Google Gemini. Si se deja vacía, se intentará leer de la variable de entorno GEMINI_API_KEY o se usará el fallback local.")]
+    [Tooltip("API Key de Google Gemini. Configurada por defecto o leída de variable de entorno GEMINI_API_KEY.")]
     [SerializeField] private string apiKey = "";
 
     [Tooltip("Modelo de Gemini a utilizar.")]
     [SerializeField] private string modeloGemini = "gemini-1.5-flash";
 
-    [Tooltip("Intervalo mínimo en segundos entre peticiones HTTP para evitar saturación de cuota.")]
+    [Tooltip("Intervalo mínimo en segundos entre peticiones HTTP para evitar saturación de cuota y spam.")]
     [SerializeField] private float cooldownEntreDialogos = 10.0f;
 
     [Tooltip("Si está activo, escribe en la consola de Unity los diálogos y respuestas de la API.")]
     [SerializeField] private bool depurarEnConsola = false;
 
     // ========================================================================= //
-    // VARIABLES INTERNAS                                                        //
+    // VARIABLES INTERNAS Y DE CICLO DE VIDA                                     //
     // ========================================================================= //
 
     private float ultimoTiempoDialogo = -999f;
     private bool peticionEnCurso = false;
     private WindowsBossAI bossAI;
+    private Coroutine corrutinaPeticion;
+    private Coroutine corrutinaInicio;
 
     // ========================================================================= //
     // CATEGORÍAS DE EVENTOS PARA DIÁLOGOS                                       //
@@ -49,6 +52,7 @@ public class WindowsAIGeminiDialogue : MonoBehaviour
     public enum DialogueContext
     {
         InicioCombate,
+        ProvocacionStalking,
         EsquiveSaltaLoco,
         ActivarFirewall,
         EjecutarTaskkill,
@@ -65,40 +69,70 @@ public class WindowsAIGeminiDialogue : MonoBehaviour
     private void Awake()
     {
         bossAI = GetComponent<WindowsBossAI>();
-        if (string.IsNullOrEmpty(apiKey))
+        string envKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY");
+        if (!string.IsNullOrEmpty(envKey))
         {
-            string envKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY");
-            if (!string.IsNullOrEmpty(envKey))
-            {
-                apiKey = envKey;
-            }
+            apiKey = envKey;
         }
     }
 
     private void OnEnable()
+    {
+        SuscribirEventos();
+    }
+
+    private void OnDisable()
+    {
+        CancelarOperaciones();
+        DesuscribirEventos();
+    }
+
+    private void OnDestroy()
+    {
+        CancelarOperaciones();
+        DesuscribirEventos();
+    }
+
+    private void SuscribirEventos()
     {
         WindowsBossAI.OnBossPhaseChanged += ManejarCambioFase;
         WindowsBossAI.OnBossDied += ManejarMuerte;
         WindowsCommandAttacks.OnBSODTriggered += ManejarBSOD;
     }
 
-    private void OnDisable()
+    private void DesuscribirEventos()
     {
         WindowsBossAI.OnBossPhaseChanged -= ManejarCambioFase;
         WindowsBossAI.OnBossDied -= ManejarMuerte;
         WindowsCommandAttacks.OnBSODTriggered -= ManejarBSOD;
     }
 
+    private void CancelarOperaciones()
+    {
+        peticionEnCurso = false;
+        if (corrutinaPeticion != null)
+        {
+            StopCoroutine(corrutinaPeticion);
+            corrutinaPeticion = null;
+        }
+        if (corrutinaInicio != null)
+        {
+            StopCoroutine(corrutinaInicio);
+            corrutinaInicio = null;
+        }
+    }
+
     private void Start()
     {
-        // Provocación de inicio tras 2 segundos
-        StartCoroutine(RutinaDialogoInicial());
+        corrutinaInicio = StartCoroutine(RutinaDialogoInicial());
     }
 
     private IEnumerator RutinaDialogoInicial()
     {
         yield return new WaitForSeconds(2.2f);
+        if (this == null || gameObject == null || (bossAI != null && bossAI.IsDead)) yield break;
         SolicitarDialogo(DialogueContext.InicioCombate, "Windows inicia el combate contra Tux el pingüino de Linux.");
+        corrutinaInicio = null;
     }
 
     private void ManejarCambioFase(int nuevaFase)
@@ -120,6 +154,7 @@ public class WindowsAIGeminiDialogue : MonoBehaviour
 
     private void ManejarMuerte()
     {
+        CancelarOperaciones();
         SolicitarDialogo(DialogueContext.MuerteBoss, "Windows ha sido derrotado por Tux y su kernel se apaga.", forzarInmediato: true);
     }
 
@@ -133,6 +168,11 @@ public class WindowsAIGeminiDialogue : MonoBehaviour
     /// </summary>
     public void SolicitarDialogo(DialogueContext contexto, string contextoDetalle = "", bool forzarInmediato = false)
     {
+        if (bossAI != null && bossAI.IsDead && contexto != DialogueContext.MuerteBoss)
+        {
+            return;
+        }
+
         if (!forzarInmediato && (Time.time - ultimoTiempoDialogo) < cooldownEntreDialogos)
         {
             return;
@@ -142,7 +182,8 @@ public class WindowsAIGeminiDialogue : MonoBehaviour
 
         if (habilitarGeminiAPI && !string.IsNullOrEmpty(apiKey) && Application.internetReachability != NetworkReachability.NotReachable && !peticionEnCurso)
         {
-            StartCoroutine(PeticionGeminiAsync(contexto, contextoDetalle));
+            if (corrutinaPeticion != null) StopCoroutine(corrutinaPeticion);
+            corrutinaPeticion = StartCoroutine(PeticionGeminiAsync(contexto, contextoDetalle));
         }
         else
         {
@@ -165,9 +206,22 @@ public class WindowsAIGeminiDialogue : MonoBehaviour
             webRequest.uploadHandler = new UploadHandlerRaw(bodyRaw);
             webRequest.downloadHandler = new DownloadHandlerBuffer();
             webRequest.SetRequestHeader("Content-Type", "application/json");
-            webRequest.timeout = 4; // Timeout estricto de 4s para no dejar tareas huérfanas
+            webRequest.timeout = 4; // Timeout estricto de 4s para no bloquear recursos
 
             yield return webRequest.SendWebRequest();
+
+            // Verificación estricta de ciclo de vida tras el await
+            if (this == null || gameObject == null)
+            {
+                peticionEnCurso = false;
+                yield break;
+            }
+
+            if (bossAI != null && bossAI.IsDead && contexto != DialogueContext.MuerteBoss)
+            {
+                peticionEnCurso = false;
+                yield break;
+            }
 
             if (webRequest.result == UnityWebRequest.Result.Success)
             {
@@ -196,6 +250,7 @@ public class WindowsAIGeminiDialogue : MonoBehaviour
         }
 
         peticionEnCurso = false;
+        corrutinaPeticion = null;
     }
 
     private string ConstruirPrompt(DialogueContext contexto, string detalle)
@@ -212,7 +267,6 @@ public class WindowsAIGeminiDialogue : MonoBehaviour
     {
         try
         {
-            // Extracción ligera de texto para evitar dependencias pesadas de JSON externas
             int textKeyIndex = json.IndexOf("\"text\":", StringComparison.Ordinal);
             if (textKeyIndex < 0) return null;
 
@@ -260,10 +314,45 @@ public class WindowsAIGeminiDialogue : MonoBehaviour
         return texto;
     }
 
+    // ========================================================================= //
+    // EVENTOS ESTÁTICOS                                                         //
+    // ========================================================================= //
+
+    /// <summary>Evento emitido al generarse una frase hablada por la IA para la burbuja 3D flotante sobre la barra de salud.</summary>
+    public static event System.Action<string> OnDialogueSpoken;
+
     private void EmitirLineaAlTerminal(string linea)
     {
-        // Emitir a través del evento de WindowsCommandAttacks para que CombatHUDManager lo muestre en el terminal CMD
         WindowsCommandAttacks.EmitirComando(linea);
+
+        string fraseHabla = LimpiarFraseParaHabla(linea);
+        if (!string.IsNullOrEmpty(fraseHabla))
+        {
+            OnDialogueSpoken?.Invoke(fraseHabla);
+        }
+    }
+
+    /// <summary>
+    /// Limpia prefijos de comando de consola (> [WINDOWS.EXE], echo, etc.) para que la burbuja
+    /// de diálogo sobre la cabeza muestre la frase natural dicha por la IA.
+    /// </summary>
+    public static string LimpiarFraseParaHabla(string linea)
+    {
+        if (string.IsNullOrEmpty(linea)) return "";
+        string limpia = linea.Trim();
+        if (limpia.StartsWith(">")) limpia = limpia.Substring(1).Trim();
+        if (limpia.StartsWith("[WINDOWS.EXE]")) limpia = limpia.Substring("[WINDOWS.EXE]".Length).Trim();
+        if (limpia.StartsWith("[KERNEL ALERT]")) limpia = limpia.Substring("[KERNEL ALERT]".Length).Trim();
+        if (limpia.StartsWith("[TELEMETRY]")) limpia = limpia.Substring("[TELEMETRY]".Length).Trim();
+        if (limpia.StartsWith("Windows 11 Defender:")) limpia = limpia.Substring("Windows 11 Defender:".Length).Trim();
+        if (limpia.StartsWith("Windows Defender:")) limpia = limpia.Substring("Windows Defender:".Length).Trim();
+        if (limpia.Contains("echo "))
+        {
+            int idx = limpia.IndexOf("echo ");
+            limpia = limpia.Substring(idx + 5).Trim();
+        }
+        limpia = limpia.Trim('"', ' ', '\'');
+        return limpia;
     }
 
     // ========================================================================= //
@@ -290,6 +379,15 @@ public class WindowsAIGeminiDialogue : MonoBehaviour
                     "> [KERNEL ALERT] Proceso no autorizado 'linux.elf' detectado en ring0.",
                     "> Windows 11 Defender: Escaneando amenazas... Pingüino sospechoso hallado.",
                     "> C:\\Windows\\System32> echo \"Tu software libre termina hoy, Tux.\""
+                };
+
+            case DialogueContext.ProvocacionStalking:
+                return new List<string>
+                {
+                    "> C:\\Windows\\System32> echo \"Tux, ¿sabías que Linux solo tiene el 4% del mercado?\"",
+                    "> [TELEMETRY] Analizando patrones de evasión... Tu latencia es inaceptable.",
+                    "> Windows Defender: Monitoreando tus movimientos... Eres un proceso de bajo consumo.",
+                    "> C:\\> ping 127.0.0.1 -t -l 65500 -> Manteniendo presión en el ring0."
                 };
 
             case DialogueContext.EsquiveSaltaLoco:

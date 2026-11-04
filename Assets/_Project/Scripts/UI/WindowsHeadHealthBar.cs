@@ -65,6 +65,14 @@ namespace SudoKill9.UI
         [SerializeField] private Image life1Dot;
         [SerializeField] private Image life2Dot;
 
+        [Header("5. Burbuja de Diálogo IA (Flotante Arriba de la Barra)")]
+        [SerializeField] private GameObject speechBubbleContainer;
+        [SerializeField] private CanvasGroup speechBubbleCanvasGroup;
+        [SerializeField] private TMP_Text speechBubbleSenderText;
+        [SerializeField] private TMP_Text speechBubbleMessageText;
+        [SerializeField] private Image speechBubbleBg;
+        [SerializeField] private float duracionDialogoDefecto = 4.5f;
+
         // Variables internas de estado
         private WindowsBossAI bossAI;
         private Camera camaraPrincipal;
@@ -76,6 +84,7 @@ namespace SudoKill9.UI
         private int vidasTotales = 2;
         private bool enTransicionVida = false;
         private Coroutine corrutinaTransicion;
+        private Coroutine corrutinaBurbujaDialogo;
 
         public Vector3 OffsetSobreCabeza
         {
@@ -89,6 +98,7 @@ namespace SudoKill9.UI
         public int VidasTotales => vidasTotales;
         public Image Life1Dot => life1Dot;
         public Image Life2Dot => life2Dot;
+        public GameObject SpeechBubbleContainer => speechBubbleContainer;
 
         public void ConfigurarParaBoss(WindowsBossAI boss, Transform cabeza = null)
         {
@@ -105,6 +115,18 @@ namespace SudoKill9.UI
 
         private void Awake()
         {
+            // Protección crítica: WindowsHeadHealthBar es un Canvas World Space.
+            // NUNCA debe residir en el mismo GameObject que el modelo del jefe ni que WindowsBossAI.
+            if (GetComponent<WindowsBossAI>() != null)
+            {
+                var boss = GetComponent<WindowsBossAI>();
+                GameObject dedicated = new GameObject("WindowsHeadHealthBar");
+                var bar = dedicated.AddComponent<WindowsHeadHealthBar>();
+                bar.ConfigurarParaBoss(boss);
+                DestroyImmediate(this);
+                return;
+            }
+
             LocalizarReferencias();
             DesacoplarDeEscalaPadre();
             AsegurarUIConstruida();
@@ -133,6 +155,9 @@ namespace SudoKill9.UI
 
             WindowsBossAI.OnBossDied -= ManejarMuerteBoss;
             WindowsBossAI.OnBossDied += ManejarMuerteBoss;
+
+            WindowsAIGeminiDialogue.OnDialogueSpoken -= MostrarMensajeIA;
+            WindowsAIGeminiDialogue.OnDialogueSpoken += MostrarMensajeIA;
         }
 
         private void OnDisable()
@@ -140,6 +165,8 @@ namespace SudoKill9.UI
             WindowsBossAI.OnBossLifeChanged -= ManejarCambioVidaBoss;
             WindowsBossAI.OnBossHealthChanged -= ManejarCambioSaludBoss;
             WindowsBossAI.OnBossDied -= ManejarMuerteBoss;
+
+            WindowsAIGeminiDialogue.OnDialogueSpoken -= MostrarMensajeIA;
         }
 
         private void Start()
@@ -431,13 +458,93 @@ namespace SudoKill9.UI
         }
 
         // ===================================================================== //
+        // BURBUJA DE DIÁLOGO FLOTANTE (ARRIBA DEL JEFE Y DE LA BARRA DE VIDA)   //
+        // ===================================================================== //
+
+        /// <summary>
+        /// Muestra una frase dicha por la IA de Windows en una burbuja 3D flotante
+        /// posicionada directamente por encima del jefe y por encima de su barra de salud.
+        /// </summary>
+        public void MostrarMensajeIA(string mensaje)
+        {
+            MostrarMensajeIA(mensaje, duracionDialogoDefecto);
+        }
+
+        public void MostrarMensajeIA(string mensaje, float duracion)
+        {
+            if (string.IsNullOrEmpty(mensaje)) return;
+
+            AsegurarUIConstruida();
+
+            if (speechBubbleContainer == null || speechBubbleCanvasGroup == null || speechBubbleMessageText == null)
+            {
+                return;
+            }
+
+            if (corrutinaBurbujaDialogo != null)
+            {
+                StopCoroutine(corrutinaBurbujaDialogo);
+            }
+            corrutinaBurbujaDialogo = StartCoroutine(RutinaAnimacionBurbuja(mensaje, duracion));
+        }
+
+        private IEnumerator RutinaAnimacionBurbuja(string mensaje, float duracion)
+        {
+            speechBubbleContainer.SetActive(true);
+            speechBubbleMessageText.text = $"\"{mensaje}\"";
+
+            // Animación suave de entrada con escala sutil
+            float tIn = 0f;
+            float durIn = 0.22f;
+            RectTransform rtBurbuja = speechBubbleContainer.GetComponent<RectTransform>();
+            Vector3 escalaBase = Vector3.one;
+
+            while (tIn < durIn)
+            {
+                tIn += Time.deltaTime;
+                float norm = Mathf.Clamp01(tIn / durIn);
+                speechBubbleCanvasGroup.alpha = norm;
+                if (rtBurbuja != null)
+                {
+                    rtBurbuja.localScale = Vector3.Lerp(new Vector3(0.85f, 0.85f, 1f), escalaBase, norm);
+                }
+                yield return null;
+            }
+
+            speechBubbleCanvasGroup.alpha = 1f;
+            if (rtBurbuja != null) rtBurbuja.localScale = escalaBase;
+
+            // Mantener en pantalla para lectura fluida
+            float visibleTimer = 0f;
+            while (visibleTimer < duracion)
+            {
+                if (bossAI != null && bossAI.IsDead) break;
+                visibleTimer += Time.deltaTime;
+                yield return null;
+            }
+
+            // Animación suave de salida (fade out)
+            float tOut = 0f;
+            float durOut = 0.40f;
+            while (tOut < durOut)
+            {
+                tOut += Time.deltaTime;
+                float norm = 1f - Mathf.Clamp01(tOut / durOut);
+                speechBubbleCanvasGroup.alpha = norm;
+                yield return null;
+            }
+
+            speechBubbleCanvasGroup.alpha = 0f;
+            speechBubbleContainer.SetActive(false);
+            corrutinaBurbujaDialogo = null;
+        }
+
+        // ===================================================================== //
         // CONSTRUCCIÓN AUTOMÁTICA EN TIEMPO DE EJECUCIÓN (WORLD SPACE)          //
         // ===================================================================== //
 
         public void AsegurarUIConstruida()
         {
-            if (fillHealthImage != null && decayHealthImage != null && life1Dot != null && life2Dot != null) return;
-
             // Configurar Canvas World Space
             worldCanvas = GetComponent<Canvas>();
             if (worldCanvas == null) worldCanvas = gameObject.AddComponent<Canvas>();
@@ -452,13 +559,14 @@ namespace SudoKill9.UI
             rtCanvas.sizeDelta = new Vector2(380f, 65f);
             transform.localScale = new Vector3(0.005f, 0.005f, 0.005f); // 1.9m ancho x 0.325m alto en mundo
 
-            TMP_FontAsset font = Resources.Load<TMP_FontAsset>("Fonts/LiberationSans SDF");
+            TMP_FontAsset font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+            if (font == null) font = Resources.Load<TMP_FontAsset>("Fonts/LiberationSans SDF");
             if (font == null)
             {
                 TMP_FontAsset[] fuentes = Resources.FindObjectsOfTypeAll<TMP_FontAsset>();
                 for (int i = 0; i < fuentes.Length; i++)
                 {
-                    if (fuentes[i].name.Contains("PixelTactical") || fuentes[i].name.Contains("Point"))
+                    if (fuentes[i].name.Contains("LiberationSans") || fuentes[i].name.Contains("PixelTactical") || fuentes[i].name.Contains("Point"))
                     {
                         font = fuentes[i];
                         break;
@@ -466,6 +574,79 @@ namespace SudoKill9.UI
                 }
                 if (font == null && fuentes.Length > 0) font = fuentes[0];
             }
+
+            // ------------------------------------------------------------- //
+            // BURBUJA DE DIÁLOGO FLOTANTE (DIRECTAMENTE ARRIBA DE LA BARRA) //
+            // ------------------------------------------------------------- //
+            if (speechBubbleContainer == null)
+            {
+                speechBubbleContainer = ObtenerOCrearHijo(transform, "SpeechBubbleContainer");
+                RectTransform rtBubble = speechBubbleContainer.GetComponent<RectTransform>();
+                rtBubble.anchorMin = new Vector2(0.5f, 1f);
+                rtBubble.anchorMax = new Vector2(0.5f, 1f);
+                rtBubble.pivot = new Vector2(0.5f, 0f);
+                rtBubble.anchoredPosition = new Vector2(0f, 14f); // 14px por encima del borde superior de la barra
+                rtBubble.sizeDelta = new Vector2(440f, 68f);
+
+                speechBubbleCanvasGroup = ObtenerOAgregarComponente<CanvasGroup>(speechBubbleContainer);
+                speechBubbleCanvasGroup.alpha = 0f;
+
+                // Fondo panel de diálogo
+                GameObject bubbleBgGO = ObtenerOCrearHijo(speechBubbleContainer.transform, "BubbleBackground");
+                RectTransform rtBg = bubbleBgGO.GetComponent<RectTransform>();
+                rtBg.anchorMin = Vector2.zero;
+                rtBg.anchorMax = Vector2.one;
+                rtBg.sizeDelta = Vector2.zero;
+                speechBubbleBg = ObtenerOAgregarComponente<Image>(bubbleBgGO);
+                speechBubbleBg.color = new Color(0.06f, 0.08f, 0.12f, 0.94f);
+
+                // Marco estético / borde cyan
+                GameObject bubbleBorderGO = ObtenerOCrearHijo(bubbleBgGO.transform, "BubbleBorder");
+                RectTransform rtBorder = bubbleBorderGO.GetComponent<RectTransform>();
+                rtBorder.anchorMin = Vector2.zero;
+                rtBorder.anchorMax = Vector2.one;
+                rtBorder.offsetMin = new Vector2(2f, 2f);
+                rtBorder.offsetMax = new Vector2(-2f, -2f);
+                Image borderImg = ObtenerOAgregarComponente<Image>(bubbleBorderGO);
+                borderImg.color = new Color(0.00f, 0.85f, 1.00f, 0.40f);
+
+                // Flecha / indicador hacia abajo apuntando a la barra
+                GameObject arrowGO = ObtenerOCrearHijo(speechBubbleContainer.transform, "BubblePointer");
+                RectTransform rtArrow = arrowGO.GetComponent<RectTransform>();
+                rtArrow.anchorMin = new Vector2(0.5f, 0f);
+                rtArrow.anchorMax = new Vector2(0.5f, 0f);
+                rtArrow.pivot = new Vector2(0.5f, 1f);
+                rtArrow.anchoredPosition = new Vector2(0f, -1f);
+                rtArrow.sizeDelta = new Vector2(16f, 8f);
+                Image arrowImg = ObtenerOAgregarComponente<Image>(arrowGO);
+                arrowImg.color = new Color(0.00f, 0.85f, 1.00f, 0.95f);
+
+                // Texto remitente: "💬 WINDOWS 11 [IA]:"
+                speechBubbleSenderText = ObtenerOCrearTexto(speechBubbleContainer.transform, "SenderText", font, 11, FontStyles.Bold, TextAlignmentOptions.Left);
+                RectTransform rtSender = speechBubbleSenderText.rectTransform;
+                rtSender.anchorMin = new Vector2(0f, 1f);
+                rtSender.anchorMax = new Vector2(1f, 1f);
+                rtSender.pivot = new Vector2(0f, 1f);
+                rtSender.anchoredPosition = new Vector2(12f, -5f);
+                rtSender.sizeDelta = new Vector2(-24f, 15f);
+                speechBubbleSenderText.text = "<color=#00E5FF>💬 WINDOWS 11 [IA]:</color>";
+
+                // Texto del mensaje hablado
+                speechBubbleMessageText = ObtenerOCrearTexto(speechBubbleContainer.transform, "MessageText", font, 12, FontStyles.Normal, TextAlignmentOptions.TopLeft);
+                RectTransform rtMsg = speechBubbleMessageText.rectTransform;
+                rtMsg.anchorMin = new Vector2(0f, 0f);
+                rtMsg.anchorMax = new Vector2(1f, 1f);
+                rtMsg.pivot = new Vector2(0.5f, 0.5f);
+                rtMsg.offsetMin = new Vector2(12f, 6f);
+                speechBubbleMessageText.textWrappingMode = TextWrappingModes.Normal;
+                speechBubbleMessageText.overflowMode = TextOverflowModes.Ellipsis;
+                speechBubbleMessageText.color = Color.white;
+                speechBubbleMessageText.text = "";
+
+                speechBubbleContainer.SetActive(false);
+            }
+
+            if (fillHealthImage != null && decayHealthImage != null && life1Dot != null && life2Dot != null) return;
 
             // Fondo del panel
             GameObject panelGO = ObtenerOCrearHijo(transform, "PanelFondo");

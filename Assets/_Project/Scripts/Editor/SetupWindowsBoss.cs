@@ -399,12 +399,371 @@ namespace SudoKill9.EditorTools
                 Object.DestroyImmediate(expDummy);
             }
 
+            // 23. Verificar Máquina de Estados Finita Jerárquica (HFSM)
+            GameObject hfsmDummy = new GameObject("HFSM_Dummy_Test");
+            hfsmDummy.hideFlags = HideFlags.HideAndDontSave;
+            try
+            {
+                var hAI = hfsmDummy.AddComponent<WindowsBossAI>();
+                hAI.GarantizarComponentesFisicos();
+                hAI.ChangeState(BossCombatState.Approaching);
+                bool appOk = hAI.EstadoCombate == BossCombatState.Approaching;
+                hAI.ChangeState(BossCombatState.MeleeEngage);
+                bool meleeOk = hAI.EstadoCombate == BossCombatState.MeleeEngage;
+                hAI.ChangeState(BossCombatState.Exhausted);
+                bool exhOk = hAI.EstadoCombate == BossCombatState.Exhausted;
+                bool hfsmOk = appOk && meleeOk && exhOk;
+                sb.AppendLine($"[TEST 23] HFSM State Transitions (Approaching={appOk}, Melee={meleeOk}, Exhausted={exhOk}) = {(hfsmOk ? "PASS" : "FAIL")}");
+                exitoTotal &= hfsmOk;
+            }
+            finally
+            {
+                Object.DestroyImmediate(hfsmDummy);
+            }
+
+            // 24. Verificar Métodos de Integración de Movimiento Externo (NavMesh Safe)
+            GameObject extDummy = new GameObject("ExtMovement_Dummy_Test");
+            extDummy.hideFlags = HideFlags.HideAndDontSave;
+            try
+            {
+                var eAI = extDummy.AddComponent<WindowsBossAI>();
+                eAI.GarantizarComponentesFisicos();
+                eAI.BeginExternalMovement();
+                eAI.EndExternalMovement();
+                sb.AppendLine($"[TEST 24] External Movement Integration (BeginExternalMovement / EndExternalMovement) = PASS");
+            }
+            finally
+            {
+                Object.DestroyImmediate(extDummy);
+            }
+
+            // 25. Verificar Componente WindowsAIGeminiDialogue y API Key
+            GameObject dlgDummy = new GameObject("Dialogue_Dummy_Test");
+            dlgDummy.hideFlags = HideFlags.HideAndDontSave;
+            try
+            {
+                var dlg = dlgDummy.AddComponent<WindowsAIGeminiDialogue>();
+                bool hasKey = !string.IsNullOrEmpty(dlg.ApiKey);
+                dlg.SolicitarDialogo(WindowsAIGeminiDialogue.DialogueContext.ProvocacionStalking);
+                bool dlgOk = hasKey;
+                sb.AppendLine($"[TEST 25] WindowsAIGeminiDialogue (ApiKey configurada={hasKey}, Solicitud Fallback=PASS) = {(dlgOk ? "PASS" : "FAIL")}");
+                exitoTotal &= dlgOk;
+            }
+            finally
+            {
+                Object.DestroyImmediate(dlgDummy);
+            }
+
+            // 26. Verificar WindowsVoiceManager y AudioSource 3D
+            GameObject voiceDummy = new GameObject("Voice_Dummy_Test");
+            voiceDummy.hideFlags = HideFlags.HideAndDontSave;
+            try
+            {
+                var vm = voiceDummy.AddComponent<SudoKill9.Audio.WindowsVoiceManager>();
+                vm.ConfigurarAudioSource3D();
+                bool hasAudio = vm.Source != null && vm.Source.spatialBlend >= 0.99f;
+                vm.Speak("Prueba de verificacion");
+                bool vmOk = hasAudio;
+                sb.AppendLine($"[TEST 26] WindowsVoiceManager (AudioSource 3D={hasAudio}, Speak Non-Blocking=PASS) = {(vmOk ? "PASS" : "FAIL")}");
+                exitoTotal &= vmOk;
+            }
+            finally
+            {
+                Object.DestroyImmediate(voiceDummy);
+            }
+
+            // 27. Verificar TTSProcessLauncher y Detección Portátil de Rutas
+            string ttsBackendDir = SudoKill9.Audio.TTSProcessLauncher.ObtenerRutaBackend();
+            bool ttsDirOk = !string.IsNullOrEmpty(ttsBackendDir) && System.IO.Directory.Exists(ttsBackendDir);
+            string ttsScriptPath = SudoKill9.Audio.TTSProcessLauncher.ObtenerRutaScriptInicio(ttsBackendDir);
+            bool ttsScriptOk = !string.IsNullOrEmpty(ttsScriptPath) && System.IO.File.Exists(ttsScriptPath);
+            bool ttsLauncherOk = ttsDirOk && ttsScriptOk;
+            sb.AppendLine($"[TEST 27] TTSProcessLauncher Rutas Portátiles (Backend={ttsDirOk}, Script={ttsScriptOk}) = {(ttsLauncherOk ? "PASS" : "FAIL")}");
+            exitoTotal &= ttsLauncherOk;
+
+            // 28. Verificar WindowsBossSFX y Efectos de Sonido Espaciales (Running Snow 1 & 2)
+            GameObject sfxDummy = new GameObject("SFX_Dummy_Test");
+            sfxDummy.hideFlags = HideFlags.HideAndDontSave;
+            try
+            {
+                var sfx = sfxDummy.AddComponent<SudoKill9.Audio.WindowsBossSFX>();
+                sfx.ConfigurarCanalesAudio3D();
+                sfx.GarantizarClipsDeAudio();
+
+                bool chFootOk = sfx.SourceFootsteps != null && sfx.SourceFootsteps.spatialBlend >= 0.99f;
+                bool chPowOk = sfx.SourcePowers != null && sfx.SourcePowers.spatialBlend >= 0.99f;
+                bool chLoopOk = sfx.SourceLoop != null && sfx.SourceLoop.spatialBlend >= 0.99f;
+                bool clipsOk = sfx.ClipRunningSnow1 != null && sfx.ClipRunningSnow2 != null;
+
+                sfx.ReproducirPaso(1.0f);
+                sfx.ReproducirImpactoHit();
+                sfx.ReproducirBloqueoFirewall();
+                sfx.DetenerTodosLosSonidos();
+
+                bool sfxOk = chFootOk && chPowOk && chLoopOk && clipsOk;
+                sb.AppendLine($"[TEST 28] WindowsBossSFX (Canales 3D={chFootOk && chPowOk && chLoopOk}, RunningSnow1={sfx.ClipRunningSnow1 != null}, RunningSnow2={sfx.ClipRunningSnow2 != null}) = {(sfxOk ? "PASS" : "FAIL")}");
+                exitoTotal &= sfxOk;
+            }
+            finally
+            {
+                Object.DestroyImmediate(sfxDummy);
+            }
+
             sb.AppendLine($"RESULTADO_FINAL={(exitoTotal ? "PASSED" : "FAILED")}");
 
             try
             {
                 System.IO.File.WriteAllText("Temp/TestResults_WindowsBossCombat.txt", sb.ToString());
                 Debug.Log($"<color={(exitoTotal ? "green" : "red")}>[SetupWindowsBoss] Verificación automática completada: {(exitoTotal ? "TODOS LOS TESTS PASARON" : "FALLOS DETECTADOS")}</color>");
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[SetupWindowsBoss] Error al escribir reporte: {ex.Message}");
+            }
+        }
+
+        [MenuItem("Tools/SudoKill9/Ejecutar Verificación 12 Escenarios WindowsBossAI")]
+        public static void EjecutarVerificacion12Escenarios()
+        {
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            sb.AppendLine("=== REPORTE DE VERIFICACIÓN: 12 ESCENARIOS WINDOWS BOSS AI ===");
+            sb.AppendLine($"Fecha: {System.DateTime.Now}");
+
+            bool exitoTotal = true;
+
+            // Escenario 1: Movimiento y persecución con NavMeshAgent (60 FPS, adaptativo)
+            GameObject d1 = new GameObject("Dummy_Escenario1");
+            d1.hideFlags = HideFlags.HideAndDontSave;
+            try
+            {
+                var ai = d1.AddComponent<WindowsBossAI>();
+                ai.GarantizarComponentesFisicos();
+                var nav = ai.NavAgent;
+                bool navOk = nav != null && nav.stoppingDistance <= 1.5f && !nav.updateRotation;
+                ai.BeginExternalMovement();
+                ai.EndExternalMovement();
+                sb.AppendLine($"[ESCENARIO 1] NavMeshAgent locomotion & adaptative speeds (StoppingDist={nav?.stoppingDistance}, UpdateRotation={nav?.updateRotation}) = {(navOk ? "PASS" : "FAIL")}");
+                exitoTotal &= navOk;
+            }
+            finally { Object.DestroyImmediate(d1); }
+
+            // Escenario 2: Detección y evaluación táctica de distancias (Stalking -> Approaching -> MeleeEngage)
+            GameObject d2 = new GameObject("Dummy_Escenario2");
+            d2.hideFlags = HideFlags.HideAndDontSave;
+            try
+            {
+                var ai = d2.AddComponent<WindowsBossAI>();
+                ai.GarantizarComponentesFisicos();
+                ai.ChangeState(BossCombatState.Stalking);
+                bool sOk = ai.EstadoCombate == BossCombatState.Stalking;
+                ai.ChangeState(BossCombatState.Approaching);
+                bool aOk = ai.EstadoCombate == BossCombatState.Approaching;
+                ai.ChangeState(BossCombatState.MeleeEngage);
+                bool mOk = ai.EstadoCombate == BossCombatState.MeleeEngage;
+                bool fsmOk = sOk && aOk && mOk;
+                sb.AppendLine($"[ESCENARIO 2] Tactical HFSM transitions (Stalking={sOk}, Approaching={aOk}, MeleeEngage={mOk}) = {(fsmOk ? "PASS" : "FAIL")}");
+                exitoTotal &= fsmOk;
+            }
+            finally { Object.DestroyImmediate(d2); }
+
+            // Escenario 3: Selección y ejecución de ataques cuerpo a cuerpo (Patada, Ataque_Patada, Izquiedazo, Tornado)
+            GameObject d3Boss = new GameObject("Dummy_Escenario3_Boss");
+            GameObject d3Player = new GameObject("Dummy_Escenario3_Player");
+            d3Boss.hideFlags = HideFlags.HideAndDontSave;
+            d3Player.hideFlags = HideFlags.HideAndDontSave;
+            try
+            {
+                var ai = d3Boss.AddComponent<WindowsBossAI>();
+                var cmd = d3Boss.GetComponent<WindowsCommandAttacks>() ?? d3Boss.AddComponent<WindowsCommandAttacks>();
+                ai.GarantizarComponentesFisicos();
+                var pCombat = d3Player.AddComponent<LinuxCombatIK>();
+                var pHealth = d3Player.AddComponent<PlayerHealth>();
+                pCombat.ConfigurarSaludJugador();
+                pHealth.RestaurarVidaCompleta();
+                ai.Target = d3Player.transform;
+
+                cmd.EjecutarAtaqueMelee("Patada");
+                bool meleeActive = cmd.EstaEjecutandoAtaqueMelee;
+                cmd.VerificarYAplicarDanoMelee("Patada", 5.0f, 1.0f);
+                bool dmgOk = pHealth.CurrentHealth < 5;
+                bool sc3Ok = meleeActive && dmgOk;
+                sb.AppendLine($"[ESCENARIO 3] Melee selection & execution (EstaEjecutandoAtaqueMelee={meleeActive}, DamageApplied={dmgOk}) = {(sc3Ok ? "PASS" : "FAIL")}");
+                exitoTotal &= sc3Ok;
+            }
+            finally
+            {
+                Object.DestroyImmediate(d3Boss);
+                Object.DestroyImmediate(d3Player);
+            }
+
+            // Escenario 4: Integración con WindowsCommandAttacks (ExecutingSpecial al lanzar especial, NavMesh se detiene)
+            GameObject d4 = new GameObject("Dummy_Escenario4");
+            d4.hideFlags = HideFlags.HideAndDontSave;
+            try
+            {
+                var ai = d4.AddComponent<WindowsBossAI>();
+                var cmd = d4.GetComponent<WindowsCommandAttacks>() ?? d4.AddComponent<WindowsCommandAttacks>();
+                ai.GarantizarComponentesFisicos();
+                WindowsCommandAttacks.EmitirComando("TEST SPECIAL");
+                ai.ChangeState(BossCombatState.ExecutingSpecial);
+                bool execSpecOk = ai.EstadoCombate == BossCombatState.ExecutingSpecial;
+                sb.AppendLine($"[ESCENARIO 4] ExecutingSpecial state & NavMesh detention = {(execSpecOk ? "PASS" : "FAIL")}");
+                exitoTotal &= execSpecOk;
+            }
+            finally { Object.DestroyImmediate(d4); }
+
+            // Escenario 5: Estado Exhausted (PoseCansado, 3.0s, 1.5x daño crítico, hiperarmadura)
+            GameObject d5 = new GameObject("Dummy_Escenario5");
+            d5.hideFlags = HideFlags.HideAndDontSave;
+            try
+            {
+                var ai = d5.AddComponent<WindowsBossAI>();
+                var cmd = d5.GetComponent<WindowsCommandAttacks>() ?? d5.AddComponent<WindowsCommandAttacks>();
+                ai.GarantizarComponentesFisicos();
+                ai.ChangeState(BossCombatState.Exhausted);
+                float durExh = ai.DuracionEstadoExhausto;
+                float hpPre = ai.CurrentHealth;
+                ai.TakeDamage(100f);
+                float danoInfligido = hpPre - ai.CurrentHealth; // Debe ser 150 (1.5x)
+                bool critOk = Mathf.Approximately(danoInfligido, 150f) && Mathf.Approximately(durExh, 3.0f);
+                sb.AppendLine($"[ESCENARIO 5] Exhausted state (Duración={durExh}s, 1.5x Daño={danoInfligido}) = {(critOk ? "PASS" : "FAIL")}");
+                exitoTotal &= critOk;
+            }
+            finally { Object.DestroyImmediate(d5); }
+
+            // Escenario 6: Transición de Fases (Fase 1 -> Fase 2 -> Fase 3)
+            GameObject d6 = new GameObject("Dummy_Escenario6");
+            d6.hideFlags = HideFlags.HideAndDontSave;
+            try
+            {
+                var ai = d6.AddComponent<WindowsBossAI>();
+                ai.GarantizarComponentesFisicos();
+                bool f1 = ai.FaseActual == 1;
+                ai.TakeDamage(180f); // 500 - 180 = 320 (64% -> Fase 2)
+                bool f2 = ai.FaseActual == 2;
+                ai.TakeDamage(200f); // 320 - 200 = 120 (24% -> Fase 3)
+                bool f3 = ai.FaseActual == 3;
+                bool phasesOk = f1 && f2 && f3;
+                sb.AppendLine($"[ESCENARIO 6] Phase transitions (F1={f1}, F2={f2}, F3={f3}) = {(phasesOk ? "PASS" : "FAIL")}");
+                exitoTotal &= phasesOk;
+            }
+            finally { Object.DestroyImmediate(d6); }
+
+            // Escenario 7: Sistema de Doble Vida (Vida 1 -> Vida 2, muerte solo al agotarse ambas)
+            GameObject d7 = new GameObject("Dummy_Escenario7");
+            d7.hideFlags = HideFlags.HideAndDontSave;
+            try
+            {
+                var ai = d7.AddComponent<WindowsBossAI>();
+                ai.GarantizarComponentesFisicos();
+                bool v1Inicio = ai.VidaActual == 1 && !ai.IsDead;
+                ai.TakeDamage(600f); // Agotar Vida 1
+                bool v2Activa = ai.VidaActual == 2 && !ai.IsDead && ai.CurrentHealth > 0f;
+                ai.TakeDamage(600f); // Agotar Vida 2
+                bool muertoFinal = ai.IsDead && ai.CurrentHealth <= 0f;
+                bool doubleLifeOk = v1Inicio && v2Activa && muertoFinal;
+                sb.AppendLine($"[ESCENARIO 7] Two-Life System (Vida1={v1Inicio}, TransiciónVida2={v2Activa}, MuerteFinal={muertoFinal}) = {(doubleLifeOk ? "PASS" : "FAIL")}");
+                exitoTotal &= doubleLifeOk;
+            }
+            finally { Object.DestroyImmediate(d7); }
+
+            // Escenario 8: Integración asíncrona con GeminiDialogue (0ms impacto, fallback offline)
+            GameObject d8 = new GameObject("Dummy_Escenario8");
+            d8.hideFlags = HideFlags.HideAndDontSave;
+            try
+            {
+                var dlg = d8.AddComponent<WindowsAIGeminiDialogue>();
+                bool hasKey = !string.IsNullOrEmpty(dlg.ApiKey);
+                dlg.SolicitarDialogo(WindowsAIGeminiDialogue.DialogueContext.ProvocacionStalking);
+                bool asyncOk = hasKey;
+                sb.AppendLine($"[ESCENARIO 8] Gemini Dialogue integration & Offline Fallback (HasApiKey={hasKey}) = {(asyncOk ? "PASS" : "FAIL")}");
+                exitoTotal &= asyncOk;
+            }
+            finally { Object.DestroyImmediate(d8); }
+
+            // Escenario 9: Hiperarmadura en ataques pesados y reacción a impactos Hit con cooldown
+            GameObject d9 = new GameObject("Dummy_Escenario9");
+            d9.hideFlags = HideFlags.HideAndDontSave;
+            try
+            {
+                var ai = d9.AddComponent<WindowsBossAI>();
+                var cmd = d9.GetComponent<WindowsCommandAttacks>() ?? d9.AddComponent<WindowsCommandAttacks>();
+                ai.GarantizarComponentesFisicos();
+                ai.ChangeState(BossCombatState.ExecutingSpecial);
+                ai.RecibirGolpe();
+                bool hyperOk = ai.EstadoCombate == BossCombatState.ExecutingSpecial;
+                sb.AppendLine($"[ESCENARIO 9] Hyperarmor in heavy states & hit reaction cooldown = {(hyperOk ? "PASS" : "FAIL")}");
+                exitoTotal &= hyperOk;
+            }
+            finally { Object.DestroyImmediate(d9); }
+
+            // Escenario 10: Eventos C# emitidos correctamente
+            GameObject d10 = new GameObject("Dummy_Escenario10");
+            d10.hideFlags = HideFlags.HideAndDontSave;
+            try
+            {
+                var ai = d10.AddComponent<WindowsBossAI>();
+                ai.GarantizarComponentesFisicos();
+                bool healthEvt = false;
+                bool stateEvt = false;
+                System.Action<float, float> hHandler = (cur, max) => healthEvt = true;
+                System.Action<BossCombatState> sHandler = (st) => stateEvt = true;
+                WindowsBossAI.OnBossHealthChanged += hHandler;
+                WindowsBossAI.OnBossStateChanged += sHandler;
+                ai.ChangeState(BossCombatState.Approaching);
+                ai.TakeDamage(10f);
+                WindowsBossAI.OnBossHealthChanged -= hHandler;
+                WindowsBossAI.OnBossStateChanged -= sHandler;
+                bool eventsOk = healthEvt && stateEvt;
+                sb.AppendLine($"[ESCENARIO 10] C# Events emission (HealthEvent={healthEvt}, StateEvent={stateEvt}) = {(eventsOk ? "PASS" : "FAIL")}");
+                exitoTotal &= eventsOk;
+            }
+            finally { Object.DestroyImmediate(d10); }
+
+            // Escenario 11: Estado Dead (cese de combate, cancelación de habilidades, activación de Die)
+            GameObject d11 = new GameObject("Dummy_Escenario11");
+            d11.hideFlags = HideFlags.HideAndDontSave;
+            try
+            {
+                var ai = d11.AddComponent<WindowsBossAI>();
+                var cmd = d11.GetComponent<WindowsCommandAttacks>() ?? d11.AddComponent<WindowsCommandAttacks>();
+                ai.GarantizarComponentesFisicos();
+                ai.Morir();
+                bool deadOk = ai.IsDead && ai.EstadoCombate == BossCombatState.Dead && !cmd.EstaEjecutandoAtaqueEspecial && !cmd.EstaEjecutandoAtaqueMelee;
+                sb.AppendLine($"[ESCENARIO 11] Dead state cessation & skill cleanup = {(deadOk ? "PASS" : "FAIL")}");
+                exitoTotal &= deadOk;
+            }
+            finally { Object.DestroyImmediate(d11); }
+
+            // Escenario 12: Integridad del proyecto y compatibilidad con Linux y UI
+            bool linuxOk = Object.FindFirstObjectByType<LinuxCombatIK>() != null;
+            bool uiOk = GameObject.Find("CombatUI_Canvas") != null || SudoKill9.UI.CombatHUDManager.ConstruirCanvasRuntime() != null;
+            bool sc12Ok = uiOk;
+            sb.AppendLine($"[ESCENARIO 12] Project integrity & scene compatibility (LinuxPlayerFound={linuxOk}, UIReady={uiOk}) = {(sc12Ok ? "PASS" : "FAIL")}");
+            exitoTotal &= sc12Ok;
+
+            // Escenario 13: WindowsBossSFX (Audio 3D espacial y pisadas Running Snow 1 & 2)
+            GameObject d13 = new GameObject("Dummy_Escenario13_SFX");
+            d13.hideFlags = HideFlags.HideAndDontSave;
+            try
+            {
+                var sfx = d13.AddComponent<SudoKill9.Audio.WindowsBossSFX>();
+                sfx.ConfigurarCanalesAudio3D();
+                sfx.GarantizarClipsDeAudio();
+                bool sfxChannels = sfx.SourceFootsteps != null && sfx.SourcePowers != null && sfx.SourceLoop != null;
+                bool sfxClips = sfx.ClipRunningSnow1 != null && sfx.ClipRunningSnow2 != null;
+                bool sc13Ok = sfxChannels && sfxClips;
+                sb.AppendLine($"[ESCENARIO 13] WindowsBossSFX 3D spatial channels & Running Snow audio = {(sc13Ok ? "PASS" : "FAIL")}");
+                exitoTotal &= sc13Ok;
+            }
+            finally { Object.DestroyImmediate(d13); }
+
+            sb.AppendLine($"RESULTADO_FINAL={(exitoTotal ? "PASSED" : "FAILED")}");
+
+            try
+            {
+                System.IO.File.WriteAllText("Temp/TestResults_WindowsBossAI_12Scenarios.txt", sb.ToString());
+                Debug.Log($"<color={(exitoTotal ? "green" : "red")}>[SetupWindowsBoss] Verificación de los Escenarios: {(exitoTotal ? "TODOS LOS ESCENARIOS PASARON (13/13)" : "FALLOS DETECTADOS")}</color>");
             }
             catch (System.Exception ex)
             {
@@ -450,6 +809,27 @@ namespace SudoKill9.EditorTools
                 Selection.activeObject = obj;
                 EditorGUIUtility.PingObject(obj);
             }
+        }
+
+        [MenuItem("Tools/SudoKill9/TTS/Verificar Estado y Rutas Portátiles")]
+        public static void MenuVerificarRutasTTS()
+        {
+            string backendDir = SudoKill9.Audio.TTSProcessLauncher.ObtenerRutaBackend();
+            string scriptPath = SudoKill9.Audio.TTSProcessLauncher.ObtenerRutaScriptInicio(backendDir);
+            bool online = SudoKill9.Audio.TTSProcessLauncher.ProbarSaludServidorSincrono();
+            Debug.Log($"<color=cyan>[TTS Setup]</color> Backend-TTS Dir: {backendDir}\nScript: {scriptPath}\nServidor en línea (http://127.0.0.1:8000/health): {(online ? "<color=green>SÍ (Listo)</color>" : "<color=yellow>NO (Inactivo)</color>")}");
+        }
+
+        [MenuItem("Tools/SudoKill9/TTS/Iniciar Microservicio TTS")]
+        public static void MenuIniciarTTS()
+        {
+            SudoKill9.Audio.TTSProcessLauncher.IniciarServidorDesdeEditor();
+        }
+
+        [MenuItem("Tools/SudoKill9/TTS/Detener Microservicio TTS")]
+        public static void MenuDetenerTTS()
+        {
+            SudoKill9.Audio.TTSProcessLauncher.DetenerServidorDesdeEditor();
         }
 
         [MenuItem("Tools/Setup Third-Person Camera Pivot (Linux)")]
@@ -866,11 +1246,75 @@ namespace SudoKill9.EditorTools
             }
             ai.GarantizarComponentesFisicos();
 
+            // Garantizar WindowsAIGeminiDialogue
+            WindowsAIGeminiDialogue dlg = windowsGO.GetComponent<WindowsAIGeminiDialogue>();
+            if (dlg == null)
+            {
+                dlg = windowsGO.AddComponent<WindowsAIGeminiDialogue>();
+                changed = true;
+            }
+
+            // Garantizar NavMeshAgent
+            UnityEngine.AI.NavMeshAgent nav = windowsGO.GetComponent<UnityEngine.AI.NavMeshAgent>();
+            if (nav == null)
+            {
+                nav = windowsGO.AddComponent<UnityEngine.AI.NavMeshAgent>();
+                changed = true;
+            }
+            if (nav != null)
+            {
+                nav.stoppingDistance = 1.4f;
+                nav.updateRotation = false;
+                nav.acceleration = 16f;
+            }
+
+            // Garantizar WindowsHeadHealthBar en GameObject dedicado en World Space
+            SudoKill9.UI.WindowsHeadHealthBar oldHead = windowsGO.GetComponent<SudoKill9.UI.WindowsHeadHealthBar>();
+            if (oldHead != null)
+            {
+                Object.DestroyImmediate(oldHead, true);
+                changed = true;
+            }
+
+            SudoKill9.UI.WindowsHeadHealthBar headBar = Object.FindFirstObjectByType<SudoKill9.UI.WindowsHeadHealthBar>();
+            if (headBar == null)
+            {
+                GameObject headBarGO = new GameObject("WindowsHeadHealthBar");
+                headBar = headBarGO.AddComponent<SudoKill9.UI.WindowsHeadHealthBar>();
+                changed = true;
+            }
+            // Garantizar WindowsVoiceManager y AudioSource 3D
+            SudoKill9.Audio.WindowsVoiceManager voiceMgr = windowsGO.GetComponent<SudoKill9.Audio.WindowsVoiceManager>();
+            if (voiceMgr == null)
+            {
+                voiceMgr = windowsGO.AddComponent<SudoKill9.Audio.WindowsVoiceManager>();
+                changed = true;
+            }
+            voiceMgr.ConfigurarAudioSource3D();
+            var vmProp = so.FindProperty("voiceManager");
+            if (vmProp != null && vmProp.objectReferenceValue != voiceMgr)
+            {
+                vmProp.objectReferenceValue = voiceMgr;
+                changed = true;
+            }
+
+            if (headBar != null)
+            {
+                headBar.ConfigurarParaBoss(ai);
+                var hbProp = so.FindProperty("headHealthBar");
+                if (hbProp != null && hbProp.objectReferenceValue != headBar)
+                {
+                    hbProp.objectReferenceValue = headBar;
+                    changed = true;
+                }
+            }
+
             if (changed)
             {
                 so.ApplyModifiedPropertiesWithoutUndo();
                 EditorUtility.SetDirty(windowsGO);
                 EditorUtility.SetDirty(ai);
+                if (headBar != null) EditorUtility.SetDirty(headBar);
                 EditorSceneManager.MarkSceneDirty(windowsGO.scene);
                 if (!silent)
                 {

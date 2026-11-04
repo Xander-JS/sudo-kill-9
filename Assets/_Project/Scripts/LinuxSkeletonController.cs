@@ -144,22 +144,47 @@ public class LinuxSkeletonController : MonoBehaviour
 
     private void Update()
     {
-        Keyboard kb = Keyboard.current;
-        if (kb == null) return;
+        float x = 0f;
+        float y = 0f;
+        bool spaceHeldInput = false;
+        bool spacePressedInput = false;
+        bool crouchInput = false;
+        bool sprintInput = false;
 
-        // Raw (non-smoothed) input: smoothing is done by physics acceleration.
-        float x = (kb.dKey.isPressed ? 1f : 0f) - (kb.aKey.isPressed ? 1f : 0f);
-        float y = (kb.wKey.isPressed ? 1f : 0f) - (kb.sKey.isPressed ? 1f : 0f);
+        Keyboard kb = Keyboard.current;
+        if (kb != null)
+        {
+            if (kb.dKey.isPressed) x += 1f;
+            if (kb.aKey.isPressed) x -= 1f;
+            if (kb.wKey.isPressed) y += 1f;
+            if (kb.sKey.isPressed) y -= 1f;
+
+            spaceHeldInput = kb.spaceKey.isPressed;
+            spacePressedInput = kb.spaceKey.wasPressedThisFrame;
+            crouchInput = kb.leftCtrlKey.isPressed || kb.cKey.isPressed;
+            sprintInput = kb.leftShiftKey.isPressed;
+        }
+
+        // Fallback a Legacy Input Manager (garantiza funcionamiento en cualquier escena/configuración)
+        if (Mathf.Approximately(x, 0f) && Mathf.Approximately(y, 0f))
+        {
+            x = Input.GetAxisRaw("Horizontal");
+            y = Input.GetAxisRaw("Vertical");
+        }
+        if (!spaceHeldInput) spaceHeldInput = Input.GetKey(KeyCode.Space);
+        if (!spacePressedInput) spacePressedInput = Input.GetKeyDown(KeyCode.Space);
+        if (!crouchInput) crouchInput = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.C);
+        if (!sprintInput) sprintInput = Input.GetKey(KeyCode.LeftShift);
+
         moveInput = Vector2.ClampMagnitude(new Vector2(x, y), 1f);
 
-        jumpHeld = kb.spaceKey.isPressed;
-        if (kb.spaceKey.wasPressedThisFrame) lastJumpPressedTime = Time.time;
+        jumpHeld = spaceHeldInput;
+        if (spacePressedInput) lastJumpPressedTime = Time.time;
 
-        crouchHeld = kb.leftCtrlKey.isPressed;
-        sprintHeld = kb.leftShiftKey.isPressed;
+        crouchHeld = crouchInput;
+        sprintHeld = sprintInput;
 
-        // Running only while Shift is held, moving, and not crouching.
-        // Re-evaluated every frame, so the state holds as long as the keys do.
+        // Running: Sprint con Shift pulsado, en movimiento y sin agacharse
         isRunning = sprintHeld && moveInput.sqrMagnitude > 0.001f && !isCrouching;
 
         UpdateAnimator();
@@ -173,9 +198,34 @@ public class LinuxSkeletonController : MonoBehaviour
 
         if (hasInputParams)
         {
-            Vector3 worldInput = new Vector3(moveInput.x, 0f, moveInput.y);
-            Vector3 local = transform.InverseTransformDirection(worldInput);
-            Vector2 target = new Vector2(local.x, local.z);
+            Vector2 target = Vector2.zero;
+            if (moveInput.sqrMagnitude > 0.001f)
+            {
+                // Dirección en coordenadas del mundo considerando la orientación del jugador o cámara
+                float aimYaw = aim != null ? aim.Yaw
+                             : thirdPersonCam != null ? thirdPersonCam.Yaw
+                             : transform.eulerAngles.y;
+                Vector3 worldDir = Quaternion.Euler(0f, aimYaw, 0f) * new Vector3(moveInput.x, 0f, moveInput.y);
+
+                // Convertir al espacio local del modelo
+                Vector3 local = transform.InverseTransformDirection(worldDir);
+                float localX = Mathf.Clamp(local.x, -1f, 1f);
+                float localZ = Mathf.Clamp(local.z, -1f, 1f);
+
+                // Blend Tree 2D Locomotion:
+                // (0, 0) = quieto
+                // (0, 0.5) = Start Walking (W caminar normal)
+                // (0, 1.0) = Run Forward (W correr con Shift)
+                // (0, -1.0) = Run Backward (S retroceder)
+                // (-1.0, 0) = Run Left (A izquierda)
+                // (1.0, 0) = Run Right (D derecha)
+                if (localZ > 0.05f)
+                {
+                    localZ = isRunning ? localZ : (localZ * 0.5f);
+                }
+
+                target = new Vector2(localX, localZ);
+            }
 
             animInput = Vector2.SmoothDamp(animInput, target, ref animInputVelocity, animInputSmoothTime);
             animator.SetFloat(inputXHash, animInput.x);
@@ -221,8 +271,9 @@ public class LinuxSkeletonController : MonoBehaviour
         float speed = walkSpeed;
         if (isCrouching) speed *= crouchMultiplier;
         else if (isRunning) speed *= sprintMultiplier;
+
         // Movimiento relativo a la cámara: W/S = adelante/atrás de la cámara, A/D = lateral.
-        // Prioridad: PlayerAim (legado) → ThirdPersonCameraController → mundo.
+        // Prioridad: PlayerAim (legado) → ThirdPersonCameraController → rotación del personaje.
         float aimYaw = aim != null ? aim.Yaw
                      : thirdPersonCam != null ? thirdPersonCam.Yaw
                      : transform.eulerAngles.y;
@@ -243,7 +294,13 @@ public class LinuxSkeletonController : MonoBehaviour
 
         rb.linearVelocity = new Vector3(horizontal.x, vel.y, horizontal.z);
 
-        // La rotación del cuerpo la controla PlayerAim; aquí no giramos.
+        // Si no hay un componente externo controlando el giro de apuntado (PlayerAim o ThirdPersonCamera),
+        // girar suavemente hacia la dirección de movimiento.
+        if (aim == null && thirdPersonCam == null && hasInput)
+        {
+            Quaternion targetRot = Quaternion.LookRotation(inputDirection);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, turnSpeed * Time.fixedDeltaTime);
+        }
     }
 
     // ---------------------------------------------------------------- //
