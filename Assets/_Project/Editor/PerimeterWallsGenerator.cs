@@ -10,7 +10,7 @@ public static class PerimeterWallsGenerator
 {
     // Already a standalone asset: the material on Inicio > Scene > ... > Cube.
     const string WallMatPath = "Assets/_Project/Materials/Mat_Warzone_BunkerWall.mat";
-    const string MapScenePath = "Assets/_Project/Scenes/Experimento_K/Scene_mapa/Mapa_completo.unity";
+    const string MapScenePath = "Assets/_Project/Scenes/GamePlay/Mapa_completo.unity";
     const string CollidersRoot = "MapColiders";
     const string WallName = "PerimeterWall_Mesh";
 
