@@ -136,8 +136,14 @@ public class WindowsCommandAttacks : MonoBehaviour
     [Tooltip("Daño infligido por Magic Fire 0 al acertar.")]
     [SerializeField] private float danoMagicFire0 = 1.0f;
 
-    [Tooltip("Duración del tornado RotatorPS2 alrededor de Linux.")]
-    [SerializeField] private float duracionRotatorPS2 = 5.0f;
+    [Tooltip("Duración activa de RotatorPS1 en segundos (trampa de área estática).")]
+    [SerializeField] private float duracionRotatorPS1 = 2.5f;
+
+    [Tooltip("Duración del tornado RotatorPS2 alrededor de Linux (compatibilidad).")]
+    [SerializeField] private float duracionRotatorPS2 = 2.5f;
+
+    public float DuracionRotatorPS1 => duracionRotatorPS1;
+    public float DuracionRotatorPS2 => duracionRotatorPS2;
 
     [Tooltip("Escala inicial del tornado RotatorPS2.")]
     [SerializeField] private Vector3 escalaRotatorPS2 = new Vector3(1.2f, 1.2f, 1.2f);
@@ -229,6 +235,9 @@ public class WindowsCommandAttacks : MonoBehaviour
 
     [Tooltip("Prefab del Ataque 2 (Homing 3s): Assets/Hovl Studio/Procedural fire/Prefabs/Magic fire 1.prefab")]
     [SerializeField] private GameObject prefabMagicFire1;
+
+    [Tooltip("Prefab del efecto RotatorPS1 (trampa estática en suelo): Assets/Hovl Studio/Procedural fire/Prefabs/RotatorPS1.prefab")]
+    [SerializeField] private GameObject prefabRotatorPS1;
 
     [Tooltip("Prefab del Tornado que rodea a Linux: Assets/Hovl Studio/Procedural fire/Prefabs/RotatorPS2.prefab")]
     [SerializeField] private GameObject prefabRotatorPS2;
@@ -450,12 +459,12 @@ public class WindowsCommandAttacks : MonoBehaviour
                 posicionCapturadaLinux,
                 playerTarget,
                 prefabExplosion,
-                prefabRotatorPS2,
+                prefabRotatorPS1 != null ? prefabRotatorPS1 : prefabRotatorPS2,
                 alturaInicialMagicFire0,
                 velocidadCaidaMagicFire0,
                 radioImpactoMagicFire0,
                 danoMagicFire0,
-                duracionRotatorPS2,
+                duracionRotatorPS1,
                 escalaRotatorPS2,
                 escalaExplosion,
                 callbackFin: () => { ataqueTerminado = true; }
@@ -919,6 +928,10 @@ public class WindowsCommandAttacks : MonoBehaviour
         if (prefabMagicFire1 == null)
         {
             prefabMagicFire1 = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Procedural fire/Prefabs/Magic fire 1.prefab");
+        }
+        if (prefabRotatorPS1 == null)
+        {
+            prefabRotatorPS1 = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Hovl Studio/Procedural fire/Prefabs/RotatorPS1.prefab");
         }
         if (prefabRotatorPS2 == null)
         {

@@ -75,6 +75,24 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
     [SerializeField] private float maxHealth = 500f;
     [SerializeField] private float currentHealth = 500f;
 
+    [Header("Sistema de Dos Vidas")]
+    [Tooltip("Número total de vidas de Windows Boss.")]
+    [SerializeField] private int vidasTotales = 2;
+
+    [Tooltip("Vida activa actual de Windows (1 = Primera vida, 2 = Segunda vida).")]
+    [SerializeField] private int vidaActual = 1;
+
+    [Tooltip("Salud máxima para la Primera Vida.")]
+    [SerializeField] private float saludVida1 = 500f;
+
+    [Tooltip("Salud máxima para la Segunda Vida.")]
+    [SerializeField] private float saludVida2 = 500f;
+
+    public int VidasTotales => vidasTotales;
+    public int VidaActual => vidaActual;
+    public float SaludVida1 => saludVida1;
+    public float SaludVida2 => saludVida2;
+
     [Tooltip("Tiempo mínimo en segundos entre reinicios de la animación Hit para evitar tartamudeo con ráfagas continuas.")]
     [SerializeField] private float intervaloMinimoReaccionGolpe = 0.32f;
 
@@ -103,6 +121,7 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
 
     // Eventos estáticos de salud, fase y muerte del jefe para la UI
     public static event System.Action<float, float> OnBossHealthChanged;
+    public static event System.Action<float, float, int, int> OnBossLifeChanged;
     public static event System.Action<int> OnBossPhaseChanged;
     public static event System.Action OnBossDied;
 
@@ -154,7 +173,12 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
 
     private void Awake()
     {
+        if (saludVida1 <= 0f) saludVida1 = maxHealth > 0f ? maxHealth : 500f;
+        if (saludVida2 <= 0f) saludVida2 = saludVida1;
+        vidaActual = 1;
+        maxHealth = saludVida1;
         currentHealth = maxHealth;
+
         GarantizarComponentesFisicos();
         ConfigurarHashesParametros();
         ultimoTiempoInspector = tiempoAnimacion;
@@ -199,7 +223,17 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
             geminiDialogue = GetComponent<WindowsAIGeminiDialogue>();
             if (geminiDialogue == null) geminiDialogue = gameObject.AddComponent<WindowsAIGeminiDialogue>();
         }
+
+        // Asegurar la barra sobre la cabeza en World Space si no existe
+        if (GetComponentInChildren<SudoKill9.UI.WindowsHeadHealthBar>() == null)
+        {
+            GameObject headBarGO = new GameObject("WindowsHeadHealthBar");
+            headBarGO.transform.SetParent(transform, false);
+            headBarGO.AddComponent<SudoKill9.UI.WindowsHeadHealthBar>();
+        }
+
         ActualizarFaseActual(false);
+        OnBossLifeChanged?.Invoke(currentHealth, maxHealth, vidaActual, vidasTotales);
         OnBossHealthChanged?.Invoke(currentHealth, maxHealth);
         OnBossPhaseChanged?.Invoke(faseActual);
 
@@ -620,25 +654,67 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
         }
 
         currentHealth -= danoFinal;
-        ActualizarFaseActual(true);
-        OnBossHealthChanged?.Invoke(currentHealth, maxHealth);
 
         if (currentHealth <= 0f)
         {
-            Morir();
+            if (vidaActual < vidasTotales)
+            {
+                // ========================================================= //
+                // TRANSICIÓN AUTOMÁTICA A LA SEGUNDA VIDA                   //
+                // ========================================================= //
+                vidaActual++;
+                maxHealth = saludVida2;
+                currentHealth = saludVida2;
+
+                ActualizarFaseActual(true);
+                OnBossLifeChanged?.Invoke(currentHealth, maxHealth, vidaActual, vidasTotales);
+                OnBossHealthChanged?.Invoke(currentHealth, maxHealth);
+
+                WindowsCommandAttacks.EmitirComando("> [KERNEL REBOOT] ¡PRIMERA VIDA AGOTADA! Núcleo de respaldo activado. Iniciando SEGUNDA VIDA (VIDA 2/2)...");
+
+                if (animator != null)
+                {
+                    animator.CrossFadeInFixedTime("Grito", 0.15f);
+                }
+
+                if (geminiDialogue != null)
+                {
+                    geminiDialogue.SolicitarDialogo(WindowsAIGeminiDialogue.DialogueContext.EntrarFase3, "Windows entra en su segunda vida con furia y overclocking.", forzarInmediato: true);
+                }
+            }
+            else
+            {
+                // Muerte definitiva: ÚNICAMENTE cuando ambas vidas se han agotado
+                currentHealth = 0f;
+                OnBossLifeChanged?.Invoke(0f, maxHealth, vidaActual, vidasTotales);
+                OnBossHealthChanged?.Invoke(0f, maxHealth);
+                Morir();
+            }
         }
         else
         {
+            ActualizarFaseActual(true);
+            OnBossLifeChanged?.Invoke(currentHealth, maxHealth, vidaActual, vidasTotales);
+            OnBossHealthChanged?.Invoke(currentHealth, maxHealth);
             RecibirGolpe();
         }
     }
 
     private void ActualizarFaseActual(bool dispararEvento)
     {
-        float ratio = currentHealth / Mathf.Max(1f, maxHealth);
-        int nuevaFase = 1;
-        if (ratio <= 0.35f) nuevaFase = 3;
-        else if (ratio <= 0.70f) nuevaFase = 2;
+        int nuevaFase;
+        if (vidaActual == 1)
+        {
+            float ratio = currentHealth / Mathf.Max(1f, maxHealth);
+            if (ratio > 0.70f) nuevaFase = 1;
+            else if (ratio > 0.35f) nuevaFase = 2;
+            else nuevaFase = 3;
+        }
+        else
+        {
+            // Segunda vida: modo Enrage permanente y ataques desbloqueados
+            nuevaFase = 3;
+        }
 
         if (nuevaFase != faseActual)
         {
@@ -723,6 +799,30 @@ public class WindowsBossAI : MonoBehaviour, IDamageable
         }
         ActualizarFaseActual(true);
         ActualizarEstadoCombate();
+        OnBossLifeChanged?.Invoke(currentHealth, maxHealth, vidaActual, vidasTotales);
+        OnBossHealthChanged?.Invoke(currentHealth, maxHealth);
+    }
+
+    /// <summary>
+    /// Restablece completamente el sistema de dos vidas para reinicios limpios de combate o testing.
+    /// </summary>
+    public void RestaurarDobleVida(float vida1 = 500f, float vida2 = 500f, int vidaIndex = 1)
+    {
+        saludVida1 = Mathf.Max(1f, vida1);
+        saludVida2 = Mathf.Max(1f, vida2);
+        vidaActual = Mathf.Clamp(vidaIndex, 1, vidasTotales);
+        maxHealth = (vidaActual == 1) ? saludVida1 : saludVida2;
+        currentHealth = maxHealth;
+        isDead = false;
+
+        if (navAgent != null && !navAgent.enabled)
+        {
+            navAgent.enabled = true;
+        }
+
+        ActualizarFaseActual(true);
+        ActualizarEstadoCombate();
+        OnBossLifeChanged?.Invoke(currentHealth, maxHealth, vidaActual, vidasTotales);
         OnBossHealthChanged?.Invoke(currentHealth, maxHealth);
     }
 
