@@ -86,12 +86,12 @@ namespace SudoKill9.Levels
         [Header("Nivel")]
         [SerializeField] private int levelNumber = 1;
         [Tooltip("Duración del temporizador de supervivencia en segundos.")]
-        [Min(10f)] [SerializeField] private float duration = 105f;
+        [Min(10f)] [SerializeField] private float duration = 40f;
         [Tooltip("Segundos de margen antes de que empiece a generar enemigos (cuenta atrás de inicio).")]
         [Min(0f)] [SerializeField] private float startDelay = 3f;
         [SerializeField] private VictoryCondition victoryCondition = VictoryCondition.SurviveTimer;
         [Tooltip("Segundos finales que se consideran 'tramo final' (evento OnFinalStretch y aviso en el HUD).")]
-        [Min(0f)] [SerializeField] private float finalStretchSeconds = 30f;
+        [Min(0f)] [SerializeField] private float finalStretchSeconds = 12f;
 
         [Header("Referencias")]
         [Tooltip("Vacío = se busca el LinuxCombatIK de la escena, o 'Player_Linux'.")]
