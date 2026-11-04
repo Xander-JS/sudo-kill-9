@@ -1,0 +1,107 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9620f8c34305754d8cc9a7e49e852d9, type: 3}
+  m_Name: Gameplay_en
+  m_EditorClassIdentifier: Unity.Localization::UnityEngine.Localization.Tables.StringTable
+  m_LocaleId:
+    m_Code: en
+  m_SharedData: {fileID: 11400000, guid: 1bc0095dac978985dbbb8413be0a0a31, type: 2}
+  m_Metadata:
+    m_Items: []
+  m_TableData:
+  - m_Id: 1039495168
+    m_Localized: SURVIVE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1052078080
+    m_Localized: "LEVEL {0} \xB7 SURVIVE {1}s"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1056272384
+    m_Localized: 'ELIMINATE REMAINING: {0}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1056272385
+    m_Localized: 'HOSTILES: {0}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466688
+    m_Localized: FINAL {0} SECONDS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466689
+    m_Localized: ELIMINATE THE REMAINING ENEMIES
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466690
+    m_Localized: LEVEL {0} COMPLETED!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466691
+    m_Localized: KERNEL PANIC
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466692
+    m_Localized: Press [{0}] to continue
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466693
+    m_Localized: Press [{0}] to retry
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466694
+    m_Localized: SPACE
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466695
+    m_Localized: ENTER
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466696
+    m_Localized: HORDE INCOMING
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466697
+    m_Localized: VIRUS PATROL DETECTED
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466698
+    m_Localized: MULTIPLE PATROLS INBOUND
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466699
+    m_Localized: HOLD ON!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466700
+    m_Localized: SHIELD WALL AHEAD
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466701
+    m_Localized: AIR RAID
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466702
+    m_Localized: FLANKED!
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466703
+    m_Localized: SIEGE FORMATION
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466704
+    m_Localized: '!! FINAL WAVE !!'
+    m_Metadata:
+      m_Items: []
+  references:
+    version: 2
+    RefIds: []

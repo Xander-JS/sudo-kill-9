@@ -1,0 +1,112 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b11a58205ec3474ca216360e9fa74a8, type: 3}
+  m_Name: Gameplay Shared Data
+  m_EditorClassIdentifier: Unity.Localization::UnityEngine.Localization.Tables.SharedTableData
+  m_TableCollectionName: Gameplay
+  m_TableCollectionNameGuidString: 1bc0095dac978985dbbb8413be0a0a31
+  m_Entries:
+  - m_Id: 1039495168
+    m_Key: gameplay_survive
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1052078080
+    m_Key: gameplay_level_intro
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1056272384
+    m_Key: gameplay_clear_counter
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1056272385
+    m_Key: gameplay_hostiles
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466688
+    m_Key: gameplay_final_stretch
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466689
+    m_Key: gameplay_clear_remaining
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466690
+    m_Key: gameplay_level_completed
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466691
+    m_Key: gameplay_defeat_title
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466692
+    m_Key: gameplay_continue_hint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466693
+    m_Key: gameplay_retry_hint
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466694
+    m_Key: gameplay_key_space
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466695
+    m_Key: gameplay_key_enter
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466696
+    m_Key: gameplay_wave_horde
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466697
+    m_Key: gameplay_wave_virus_patrol
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466698
+    m_Key: gameplay_wave_multiple_patrols
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466699
+    m_Key: gameplay_wave_hold_on
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466700
+    m_Key: gameplay_wave_shield_wall
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466701
+    m_Key: gameplay_wave_air_raid
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466702
+    m_Key: gameplay_wave_flanked
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466703
+    m_Key: gameplay_wave_siege
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1060466704
+    m_Key: gameplay_wave_final
+    m_Metadata:
+      m_Items: []
+  m_Metadata:
+    m_Items: []
+  m_KeyGenerator:
+    rid: 7558213452819595488
+  references:
+    version: 2
+    RefIds:
+    - rid: 7558213452819595488
+      type: {class: DistributedUIDGenerator, ns: UnityEngine.Localization.Tables, asm: Unity.Localization}
+      data:
+        m_CustomEpoch: 1793788755168
