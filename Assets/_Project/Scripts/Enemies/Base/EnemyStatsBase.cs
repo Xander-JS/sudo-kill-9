@@ -21,7 +21,13 @@ namespace SudoKill9.Enemies
         [Tooltip("Tiempo mínimo entre ataques en segundos.")]
         [SerializeField] protected float attackCooldown = 1.5f;
 
+        [Header("Muerte")]
+        [Tooltip("Segundos entre la muerte y Destroy(gameObject): deja ver animación, SFX y VFX de muerte. < 0 = no destruir (el cadáver queda).")]
+        [SerializeField] protected float despawnDelay = 1.5f;
+
         public event Action<float> OnTakeDamage;
+        /// <summary>(vida actual, vida máxima) tras cada daño o curación. Lo usa EnemyHealthBar.</summary>
+        public event Action<float, float> OnHealthChanged;
         public event Action OnDeath;
         public event Action<bool> OnCriticalHealthChanged;
 
@@ -29,6 +35,7 @@ namespace SudoKill9.Enemies
         public float CurrentHealth => currentHealth;
         public float AttackDamage => attackDamage;
         public float AttackCooldown => attackCooldown;
+        public float DespawnDelay => despawnDelay;
         public bool IsDead => currentHealth <= 0f;
         public bool IsCriticalHealth => !IsDead && (currentHealth / maxHealth) <= criticalHealthThreshold;
 
@@ -44,6 +51,7 @@ namespace SudoKill9.Enemies
             if (IsDead) return;
 
             currentHealth = Mathf.Max(0f, currentHealth - amount);
+            OnHealthChanged?.Invoke(currentHealth, maxHealth);
             OnTakeDamage?.Invoke(amount);
             CheckCriticalChange();
 
@@ -54,6 +62,7 @@ namespace SudoKill9.Enemies
         {
             if (IsDead) return;
             currentHealth = Mathf.Min(maxHealth, currentHealth + amount);
+            OnHealthChanged?.Invoke(currentHealth, maxHealth);
             CheckCriticalChange();
         }
 
@@ -64,6 +73,8 @@ namespace SudoKill9.Enemies
         protected virtual void Die()
         {
             OnDeath?.Invoke();
+            // Desde el menú contextual en modo edición no se puede destruir; solo en juego.
+            if (despawnDelay >= 0f && Application.isPlaying) Destroy(gameObject, despawnDelay);
         }
 
         private void CheckCriticalChange()
