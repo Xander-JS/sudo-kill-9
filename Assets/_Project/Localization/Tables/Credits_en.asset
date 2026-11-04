@@ -134,6 +134,125 @@ MonoBehaviour:
     m_Localized: Press [SPACE] or [ESC] to exit
     m_Metadata:
       m_Items: []
+  - m_Id: 112366980526080
+    m_Localized: Audio Editing and Mastering
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720384
+    m_Localized: Audacity
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720385
+    m_Localized: MUSIC & SOUND EFFECTS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720386
+    m_Localized: Royalty-free music and sound effects
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720387
+    m_Localized: Pixabay (pixabay.com)
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720388
+    m_Localized: 'Thanks to the Pixabay authors and artists
+
+      for sharing their
+      work under the Pixabay Content License'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720389
+    m_Localized: FREESOUND SOUND EFFECTS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720390
+    m_Localized: Community sounds
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720391
+    m_Localized: Freesound (freesound.org)
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720392
+    m_Localized: '"Journey To The Interweb" by aemyn'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720393
+    m_Localized: '"Fx 26 Laser" by alienxxx'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720394
+    m_Localized: '"Laser Shoot2" by alphatrooper18'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720395
+    m_Localized: '"Laser2" by daleonfire'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720396
+    m_Localized: '"Impact On A Window" by felixblume'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720397
+    m_Localized: '"Buzzing Faulty And Sparking Fluorescent Light" by iainmccurdy'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720398
+    m_Localized: '"Agua" by malucien'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720399
+    m_Localized: '"Sfx Outage Hit" by mirmaximus'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720400
+    m_Localized: '"Data Transfer" by nakhas'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720401
+    m_Localized: '"Robo" by sergenious'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720402
+    m_Localized: '"Game Clicks From" by signaturesoundsorg'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720403
+    m_Localized: '"Data Bolts" by tboneaudio'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720404
+    m_Localized: '"Glitch Sd 03" by timkahn'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720405
+    m_Localized: '"Cyber Play" by xcreenplay'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720406
+    m_Localized: 'Sounds by Freesound users,
+
+      used under their respective Creative
+      Commons licenses'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720407
+    m_Localized: EXTERNAL ANIMATIONS & VISUAL EFFECTS
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720408
+    m_Localized: Animations and visual effects (VFX)
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720409
+    m_Localized: Unity Asset Store
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720410
+    m_Localized: "Hovl Studio \xB7 JMO Assets (Cartoon FX)\nUsed under the Unity
+      Asset Store Standard License"
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

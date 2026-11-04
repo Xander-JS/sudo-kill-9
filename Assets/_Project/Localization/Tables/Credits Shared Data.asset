@@ -123,6 +123,118 @@ MonoBehaviour:
     m_Key: credits_exit_prompt
     m_Metadata:
       m_Items: []
+  - m_Id: 112366980526080
+    m_Key: credits_tool_audio_editing_label
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720384
+    m_Key: credits_tool_audio_editing
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720385
+    m_Key: credits_sound_header
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720386
+    m_Key: credits_sound_pixabay_label
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720387
+    m_Key: credits_sound_pixabay
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720388
+    m_Key: credits_sound_pixabay_note
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720389
+    m_Key: credits_freesound_header
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720390
+    m_Key: credits_freesound_label
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720391
+    m_Key: credits_freesound
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720392
+    m_Key: credits_freesound_aemyn_journey_to_the_interweb
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720393
+    m_Key: credits_freesound_alienxxx_fx_26_laser
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720394
+    m_Key: credits_freesound_alphatrooper18_laser_shoot2
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720395
+    m_Key: credits_freesound_daleonfire_laser2
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720396
+    m_Key: credits_freesound_felixblume_impact_on_a_window
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720397
+    m_Key: credits_freesound_iainmccurdy_buzzing_faulty_and_sparking_fluorescent_light
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720398
+    m_Key: credits_freesound_malucien_agua
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720399
+    m_Key: credits_freesound_mirmaximus_sfx_outage_hit
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720400
+    m_Key: credits_freesound_nakhas_data_transfer
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720401
+    m_Key: credits_freesound_sergenious_robo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720402
+    m_Key: credits_freesound_signaturesoundsorg_game_clicks_from
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720403
+    m_Key: credits_freesound_tboneaudio_data_bolts
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720404
+    m_Key: credits_freesound_timkahn_glitch_sd_03
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720405
+    m_Key: credits_freesound_xcreenplay_cyber_play
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720406
+    m_Key: credits_freesound_note
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720407
+    m_Key: credits_assets_header
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720408
+    m_Key: credits_assets_store_label
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720409
+    m_Key: credits_assets_store
+    m_Metadata:
+      m_Items: []
+  - m_Id: 112366984720410
+    m_Key: credits_assets_store_note
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:
