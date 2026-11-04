@@ -211,7 +211,7 @@ public class LinuxCombatIK : MonoBehaviour, IDamageable
     public float tiempoVidaBala = 3.5f;
 
     [Tooltip("Daño infligido al impactar sobre objetivos con IDamageable.")]
-    public float danoBala = 25f;
+    public float danoBala = 50f;
 
     [Tooltip("Cadencia de disparo (máximo de balas por segundo).")]
     public float cadenciaDisparo = 5f;

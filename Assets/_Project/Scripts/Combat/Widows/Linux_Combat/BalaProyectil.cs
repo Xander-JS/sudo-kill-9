@@ -24,7 +24,7 @@ public class BalaProyectil : MonoBehaviour
     public float tiempoDeVida = 3.5f;
 
     [Tooltip("Cantidad de daño aplicada al impactar sobre un objeto con IDamageable.")]
-    public float dano = 25f;
+    public float dano = 50f;
 
     [Tooltip("Capas con las que puede colisionar e impactar la bala.")]
     public LayerMask capasImpacto = ~0;
