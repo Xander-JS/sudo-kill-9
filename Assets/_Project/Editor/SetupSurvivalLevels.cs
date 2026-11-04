@@ -20,12 +20,13 @@ namespace SudoKill9.EditorTools
     /// 4. Reparte puntos de aparición sobre el NavMesh.
     /// 5. Crea el 'LevelController' (SurvivalLevelController + SurvivalLevelHUD) con el preset de cada nivel.
     /// 6. Registra ambas escenas en EditorBuildSettings.
+    /// Los textos del HUD son claves de la String Table 'Gameplay' (ver GameplayLocalizationBuilder).
     /// Volver a ejecutarlo regenera las escenas desde cero (pide confirmación).
     /// </summary>
     public static class SetupSurvivalLevels
     {
         private const string SourceScene = "Assets/_Project/Scenes/Experimento_K/Scene_mapa/Mapa_completo.unity";
-        private const string ScenesDir = "Assets/_Project/Scenes";
+        private const string ScenesDir = "Assets/_Project/Scenes/GamePlay";
         private const string EnemiesDir = "Assets/_Project/Prefabs/Characters/Enemies";
         private const string FontPath = "Assets/_Project/Fonts/PixelTactical_Point.asset";
         private const string MapRootName = "Map";
@@ -37,6 +38,7 @@ namespace SudoKill9.EditorTools
         public static void BuildBoth()
         {
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+            GameplayLocalizationBuilder.FillTable(); // los avisos de las hordas son claves de esta tabla
 
             bool exists = File.Exists(ScenePath("Nivel_1")) || File.Exists(ScenePath("Nivel_2"));
             if (exists && !EditorUtility.DisplayDialog("Survival Levels",
@@ -249,7 +251,7 @@ namespace SudoKill9.EditorTools
             so.FindProperty("duration").floatValue = duration;
             so.FindProperty("finalStretchSeconds").floatValue = 30f;
             so.FindProperty("victoryCondition").enumValueIndex = (int)VictoryCondition.SurviveTimer;
-            so.FindProperty("completedMessage").stringValue = "LEVEL 1 COMPLETED!";
+            so.FindProperty("completedMessageKey").stringValue = GameplayKeys.LevelCompleted;
             so.FindProperty("nextSceneName").stringValue = "Nivel_2";
 
             SetPool(so.FindProperty("enemyPool"),
@@ -261,11 +263,11 @@ namespace SudoKill9.EditorTools
             so.FindProperty("maxAlive").animationCurveValue = Linear((0f, 3f), (final, 6f), (1f, 10f));
 
             SetWaves(so.FindProperty("scriptedWaves"),
-                Wave("Virus patrol", 30f, SpawnPlacement.AroundPlayer, 1, "VIRUS PATROL DETECTED",
+                Wave("Virus patrol", 30f, SpawnPlacement.AroundPlayer, 1, GameplayKeys.WaveVirusPatrol,
                     (virus, 3, 0f), (espia, 1, 6f)),
-                Wave("Pincer patrol", 20f, SpawnPlacement.AroundPlayer, 2, "MULTIPLE PATROLS INBOUND",
+                Wave("Pincer patrol", 20f, SpawnPlacement.AroundPlayer, 2, GameplayKeys.WaveMultiplePatrols,
                     (virus, 4, 0f), (espia, 2, 7f)),
-                Wave("Last stand", 10f, SpawnPlacement.BehindPlayer, 2, "HOLD ON!",
+                Wave("Last stand", 10f, SpawnPlacement.BehindPlayer, 2, GameplayKeys.WaveHoldOn,
                     (virus, 4, 0f), (espia, 2, 6f)));
         }
 
@@ -283,7 +285,7 @@ namespace SudoKill9.EditorTools
             so.FindProperty("duration").floatValue = duration;
             so.FindProperty("finalStretchSeconds").floatValue = 30f;
             so.FindProperty("victoryCondition").enumValueIndex = (int)VictoryCondition.SurviveTimerThenClear;
-            so.FindProperty("completedMessage").stringValue = "LEVEL 2 COMPLETED!";
+            so.FindProperty("completedMessageKey").stringValue = GameplayKeys.LevelCompleted;
             so.FindProperty("nextSceneName").stringValue = "Nivel_3";
             so.FindProperty("fallbackSceneName").stringValue = "Inicio";
 
@@ -298,15 +300,15 @@ namespace SudoKill9.EditorTools
             so.FindProperty("maxAlive").animationCurveValue = Linear((0f, 5f), (0.6f, 10f), (1f, 16f));
 
             SetWaves(so.FindProperty("scriptedWaves"),
-                Wave("Shield wall", 115f, SpawnPlacement.AheadOfPlayer, 1, "SHIELD WALL AHEAD",
+                Wave("Shield wall", 115f, SpawnPlacement.AheadOfPlayer, 1, GameplayKeys.WaveShieldWall,
                     (escudo, 2, 0f), (virus, 3, 0f)),
-                Wave("Air raid", 90f, SpawnPlacement.AroundPlayer, 2, "AIR RAID",
+                Wave("Air raid", 90f, SpawnPlacement.AroundPlayer, 2, GameplayKeys.WaveAirRaid,
                     (volador, 3, 0f), (espia, 2, 6f)),
-                Wave("Pincer", 65f, SpawnPlacement.AroundPlayer, 2, "FLANKED!",
+                Wave("Pincer", 65f, SpawnPlacement.AroundPlayer, 2, GameplayKeys.WaveFlanked,
                     (virus, 4, 0f), (escudo, 1, 0f), (volador, 2, 0f)),
-                Wave("Siege", 40f, SpawnPlacement.AheadOfPlayer, 2, "SIEGE FORMATION",
+                Wave("Siege", 40f, SpawnPlacement.AheadOfPlayer, 2, GameplayKeys.WaveSiege,
                     (escudo, 2, 0f), (espia, 3, 6f), (volador, 2, 0f)),
-                Wave("Final wave", 15f, SpawnPlacement.AroundPlayer, 3, "!! FINAL WAVE !!",
+                Wave("Final wave", 15f, SpawnPlacement.AroundPlayer, 3, GameplayKeys.WaveFinal,
                     (virus, 8, 0f), (escudo, 3, 0f), (volador, 4, 0f), (espia, 4, 6f)));
         }
 
@@ -340,7 +342,7 @@ namespace SudoKill9.EditorTools
                 e.FindPropertyRelative("placement").enumValueIndex = (int)w.placement;
                 e.FindPropertyRelative("entryPoints").intValue = w.entryPoints;
                 e.FindPropertyRelative("memberDelay").floatValue = w.groups.Sum(g => g.count) > 12 ? 0.15f : 0.25f;
-                e.FindPropertyRelative("announcement").stringValue = w.announcement;
+                e.FindPropertyRelative("announcementKey").stringValue = w.announcement;
 
                 var groups = e.FindPropertyRelative("groups");
                 groups.arraySize = w.groups.Length;
