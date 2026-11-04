@@ -11,7 +11,15 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/_Project/Scenes/prueba.unity
     guid: 33d7827d6e0075342b331401db10a823
+  - enabled: 1
+    path: Assets/_Project/Scenes/Credits.unity
+    guid: 184e84838fe819f1ea4965c46154b9d7
+  - enabled: 1
+    path: Assets/_Project/Scenes/Configuraciones.unity
+    guid: 6131311579db2a480a5133f773378402
   m_configObjects:
+    com.unity.addressableassets: {fileID: 11400000, guid: 6c24e4ce34d0b0060b643727765f7bc5, type: 2}
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+    com.unity.localization.settings: {fileID: 11400000, guid: 57ad1f249b516bdd680afa43107a507e, type: 2}
   m_UseUCBPForAssetBundles: 0
